@@ -19,6 +19,11 @@
 #include "freertos/queue.h"
 #include "meshtastic/mesh.pb.h"
 
+namespace mesh
+{
+    class MeshCoreBridge;
+}
+
 namespace Mesh
 {
 
@@ -98,6 +103,8 @@ namespace Mesh
         PacketRouter();
         ~PacketRouter();
 
+        void setBridge(mesh::MeshCoreBridge* bridge);
+
         bool init(uint32_t our_node_id = 0);
 
         void setNodeId(uint32_t node_id);
@@ -162,6 +169,7 @@ namespace Mesh
         PacketRecord _history[PACKET_HISTORY_SIZE];
         uint32_t _our_node_id;
         uint8_t _our_relay_id;
+        mesh::MeshCoreBridge* _bridge;
 
         PacketRecord* historyFind(uint32_t sender, uint32_t id);
         void historyInsert(const PacketRecord& r);

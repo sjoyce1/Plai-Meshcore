@@ -282,7 +282,7 @@ namespace Mesh
          * @brief Get our node ID
          * @return Node ID
          */
-        uint32_t getNodeId() const { return _config.node_id; }
+        uint32_t getNodeId() const;
 
         /**
          * @brief Compute channel hash byte for a given channel's settings
@@ -478,6 +478,7 @@ namespace Mesh
         QueueHandle_t _gps_queue;
         NodeDB* _nodedb;
         PacketRouter _router;
+        mesh::MeshCoreBridge* _bridge;
         MeshConfig _config;
         MeshState _state;
 

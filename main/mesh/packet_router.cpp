@@ -10,9 +10,11 @@
  */
 
 #include "packet_router.h"
+#include "meshcore_bridge.h"
 #include "common_define.h"
 #include "esp_log.h"
 #include "esp_random.h"
+#include "esp_timer.h"
 #include <string.h>
 
 static const char* TAG = "PACKET_ROUTER";
@@ -77,6 +79,11 @@ namespace Mesh
     PacketRouter::~PacketRouter()
     {
         // Static queues don't need deletion — their storage is part of the object
+    }
+
+    void PacketRouter::setBridge(mesh::MeshCoreBridge* bridge)
+    {
+        _bridge = bridge;
     }
 
     // =========================================================================
@@ -433,7 +440,14 @@ namespace Mesh
 
     bool PacketRouter::dequeueTx(QueuedPacket& packet) { return xQueueReceive(_tx_queue, &packet, 0) == pdTRUE; }
 
-    bool PacketRouter::hasTxPackets() const { return uxQueueMessagesWaiting(_tx_queue) > 0; }
+    bool PacketRouter::hasTxPackets() const
+    {
+        if (_bridge)
+        {
+            return _bridge->getOutboundCount(esp_timer_get_time() / 1000) > 0;
+        }
+        return uxQueueMessagesWaiting(_tx_queue) > 0;
+    }
 
     size_t PacketRouter::getTxQueueSize() const { return (size_t)uxQueueMessagesWaiting(_tx_queue); }
 

@@ -12,4 +12,4 @@ add_compile_definitions(BUILD_NUMBER="${BUILD_NUMBER}")
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
-project(Plai)
+project(plai-meshcore)

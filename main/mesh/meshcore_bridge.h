@@ -78,13 +78,16 @@ public:
         for (int i = 0; i < 8; i++) { // Plai has 8 channels
             auto* ch = _nodedb->getChannel(i);
             if (ch && ch->role != meshtastic_Channel_Role_DISABLED) {
-                uint8_t ch_hash[32];
                 if (ch->has_settings && ch->settings.psk.size > 0) {
-                    Utils::sha256(ch_hash, 32, ch->settings.psk.bytes, ch->settings.psk.size);
+                    uint8_t secret[32];
+                    memset(secret, 0, 32);
+                    memcpy(secret, ch->settings.psk.bytes, ch->settings.psk.size);
+                    uint8_t ch_hash[32];
+                    Utils::sha256(ch_hash, 32, secret, ch->settings.psk.size);
+                    ESP_LOGI("BRIDGE", "searchChannelsByHash: target=0x%02X, ch %d name='%s', psk_size=%d, ch_hash=0x%02X", hash[0], i, ch->settings.name, (int)ch->settings.psk.size, ch_hash[0]);
                     if (ch_hash[0] == hash[0] && matches < max_matches) {
                         channels[matches].hash[0] = ch_hash[0];
-                        memset(channels[matches].secret, 0, 32);
-                        memcpy(channels[matches].secret, ch->settings.psk.bytes, ch->settings.psk.size);
+                        memcpy(channels[matches].secret, secret, 32);
                         matches++;
                     }
                 }
@@ -116,12 +119,14 @@ public:
     // Handle incoming group channel message
     void onGroupDataRecv(Packet* packet, uint8_t type, const GroupChannel& channel, uint8_t* data, size_t len) override {
         uint8_t txt_type = data[4];
+        ESP_LOGI("BRIDGE", "onGroupDataRecv: type=%d, len=%d, txt_type=%d", (int)type, (int)len, (int)txt_type);
         if (type == PAYLOAD_TYPE_GRP_TXT && len > 5 && (txt_type >> 2) == 0) {
             uint32_t timestamp;
             memcpy(&timestamp, data, 4);
             data[len] = 0; // null terminate
 
             const char* msg_text = (const char*)&data[5];
+            ESP_LOGI("BRIDGE", "Received group message text: '%s'", msg_text);
             const char* colon = strstr(msg_text, ": ");
             std::string sender_name = "";
             std::string clean_text = msg_text;

@@ -138,13 +138,13 @@ namespace HAL
           _initialized(false)
     {
         // Initialize default config
-        _config.frequency_hz = 915000000; // 915 MHz
-        _config.bandwidth_hz = 250000;
-        _config.spreading_factor = 9;
-        _config.coding_rate = 5;
+        _config.frequency_hz = 910525000; // 910.525 MHz (MeshCore default)
+        _config.bandwidth_hz = 62500;     // 62.5 kHz
+        _config.spreading_factor = 7;     // SF7
+        _config.coding_rate = 5;          // CR 4/5
         _config.tx_power_dbm = 22;
-        _config.preamble_length = 8; // 16;
-        _config.sync_word = 0x2B;
+        _config.preamble_length = 8;
+        _config.sync_word = 0x12;         // MeshCore sync word
         _config.crc_enabled = true;
         _config.implicit_header = false;
         _config.iq_inverted = false;

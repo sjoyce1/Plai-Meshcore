@@ -191,8 +191,10 @@ namespace Mesh
             if (ch && ch->has_settings && ch->settings.psk.size > 0)
             {
                 mesh::GroupChannel group_ch;
-                mesh::Utils::sha256(group_ch.hash, 1, ch->settings.psk.bytes, ch->settings.psk.size);
+                memset(group_ch.secret, 0, 32);
                 memcpy(group_ch.secret, ch->settings.psk.bytes, ch->settings.psk.size);
+                int key_len = (ch->settings.psk.size == 16) ? 16 : 32;
+                mesh::Utils::sha256(group_ch.hash, 1, group_ch.secret, key_len);
 
                 uint32_t now = time(nullptr);
                 const char* sender_name = _config.short_name;

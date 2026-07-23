@@ -212,20 +212,23 @@ DispatcherAction Mesh::onRecvPacket(Packet* pkt) {
       if (i + 2 >= pkt->payload_len) {
         MESH_DEBUG_PRINTLN("%s Mesh::onRecvPacket(): incomplete data packet", getLogDateTime());
       } else if (!_tables->hasSeen(pkt)) {
-        // scan channels DB, for all matching hashes of 'channel_hash' (max 4 matches supported ATM)
         GroupChannel channels[4];
         int num = searchChannelsByHash(&channel_hash, channels, 4);
-        // for each matching channel, try to decrypt data
+        MESH_DEBUG_PRINTLN("%s Recv GRP_TXT, ch_hash=0x%02X, matching_channels=%d", getLogDateTime(), (unsigned int)channel_hash, num);
         for (int j = 0; j < num; j++) {
-          // decrypt, checking MAC is valid
           uint8_t data[MAX_PACKET_PAYLOAD];
           int len = Utils::MACThenDecrypt(channels[j].secret, data, macAndData, pkt->payload_len - i);
           if (len > 0) {  // success!
+            MESH_DEBUG_PRINTLN("%s Decrypted GRP_TXT successfully, len=%d", getLogDateTime(), len);
             onGroupDataRecv(pkt, pkt->getPayloadType(), channels[j], data, len);
             break;
+          } else {
+            MESH_DEBUG_PRINTLN("%s Decrypt GRP_TXT failed for channel match %d", getLogDateTime(), j);
           }
         }
         action = routeRecvPacket(pkt);
+      } else {
+        MESH_DEBUG_PRINTLN("%s Recv GRP_TXT ignored (already seen hash)", getLogDateTime());
       }
       break;
     }

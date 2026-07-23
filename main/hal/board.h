@@ -44,14 +44,14 @@ namespace HAL
         constexpr int PIN_RXEN = -1; // RX enable for antenna switch
         constexpr int PIN_TXEN = -1; // TX enable for antenna switch
 
-        // Default LoRa configuration
-        constexpr float DEFAULT_FREQ_MHZ = 915.0f;   // US frequency
-        constexpr int DEFAULT_BANDWIDTH_KHZ = 250;   // 250 kHz
-        constexpr int DEFAULT_SPREADING_FACTOR = 11; // SF11
+        // Default LoRa configuration (MeshCore defaults)
+        constexpr float DEFAULT_FREQ_MHZ = 910.525f; // MeshCore default frequency
+        constexpr int DEFAULT_BANDWIDTH_KHZ = 62.5f; // 62.5 kHz
+        constexpr int DEFAULT_SPREADING_FACTOR = 7;  // SF7
         constexpr int DEFAULT_CODING_RATE = 5;       // 4/5
         constexpr int DEFAULT_TX_POWER_DBM = 22;     // Max power
         constexpr int DEFAULT_PREAMBLE_LENGTH = 8;
-        constexpr int DEFAULT_SYNC_WORD = 0x2B; // Meshtastic sync word
+        constexpr int DEFAULT_SYNC_WORD = 0x12;      // MeshCore sync word
     } // namespace LoRa
 
     /**

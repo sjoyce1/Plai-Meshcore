@@ -9,11 +9,12 @@ namespace mesh {
 class EspRadioWrapper : public Radio {
   HAL::RadioInterface* _radio;
   bool _is_tx_complete;
+  bool _has_rx_packet;
   float _last_rssi;
   float _last_snr;
 
 public:
-  EspRadioWrapper(HAL::RadioInterface* radio) : _radio(radio), _is_tx_complete(false), _last_rssi(0), _last_snr(0) {}
+  EspRadioWrapper(HAL::RadioInterface* radio) : _radio(radio), _is_tx_complete(false), _has_rx_packet(false), _last_rssi(0), _last_snr(0) {}
 
   void begin() override {
     _radio->setEventCallback([this](HAL::RadioEvent event) {
@@ -27,7 +28,7 @@ public:
       _is_tx_complete = true;
       _radio->setMode(HAL::RadioMode::RX); // automatically fallback to RX mode
     } else if (event == HAL::RadioEvent::RX_DONE) {
-      // Packet is available, retrieved in recvRaw
+      _has_rx_packet = true;
     } else if (event == HAL::RadioEvent::RX_TIMEOUT || event == HAL::RadioEvent::RX_ERROR) {
       _radio->startReceive(0); // restart continuous receive
     } else if (event == HAL::RadioEvent::TX_TIMEOUT) {
@@ -37,6 +38,9 @@ public:
   }
 
   int recvRaw(uint8_t* bytes, int sz) override {
+    if (!_has_rx_packet) return 0;
+    _has_rx_packet = false;
+
     HAL::RxPacketInfo info;
     int len = _radio->readPacket(bytes, sz, &info);
     if (len > 0) {

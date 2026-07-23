@@ -29,7 +29,7 @@
 #include <cstdio>
 
 static const char* TAG = "HAL";
-static const char* DEFAULT_CHANNEL_PSK_B64 = "AQ==";
+static const char* DEFAULT_CHANNEL_PSK_B64 = "izOH6cXN6mrJ5e26oRXNcg==";
 
 #if HAL_USE_SPEAKER
 extern const uint8_t morse_wav_start[] asm("_binary_morse_wav_start");
@@ -548,35 +548,21 @@ bool HalCardputer::startMesh()
     _mesh->loadConfigFromSettings(mesh_config);
 
     _nodedb->loadChannels();
-    bool found_primary = false;
-    for (uint8_t i = 0; i < 8; i++)
+    ESP_LOGI(TAG, "Setting MeshCore default primary channel PSK");
+    mesh_config.primary_channel.index = 0;
+    mesh_config.primary_channel.role = meshtastic_Channel_Role_PRIMARY;
+    mesh_config.primary_channel.has_settings = true;
+    strcpy(mesh_config.primary_channel.settings.name, "Public");
+    size_t psk_len = 0;
+    if (decodeBase64(DEFAULT_CHANNEL_PSK_B64,
+                     mesh_config.primary_channel.settings.psk.bytes,
+                     sizeof(mesh_config.primary_channel.settings.psk.bytes),
+                     &psk_len))
     {
-        auto* ch = _nodedb->getChannel(i);
-        if (ch && ch->role == meshtastic_Channel_Role_PRIMARY && ch->has_settings)
-        {
-            mesh_config.primary_channel = *ch;
-            found_primary = true;
-            break;
-        }
+        mesh_config.primary_channel.settings.psk.size = psk_len;
     }
-    if (!found_primary)
-    {
-        ESP_LOGI(TAG, "No primary channel in storage, applying defaults");
-        mesh_config.primary_channel.index = 0;
-        mesh_config.primary_channel.role = meshtastic_Channel_Role_PRIMARY;
-        mesh_config.primary_channel.has_settings = true;
-        strcpy(mesh_config.primary_channel.settings.name, "LongFast");
-        size_t psk_len = 0;
-        if (decodeBase64(DEFAULT_CHANNEL_PSK_B64,
-                         mesh_config.primary_channel.settings.psk.bytes,
-                         sizeof(mesh_config.primary_channel.settings.psk.bytes),
-                         &psk_len))
-        {
-            mesh_config.primary_channel.settings.psk.size = psk_len;
-        }
-        _nodedb->setChannel(0, mesh_config.primary_channel);
-        _nodedb->saveChannels();
-    }
+    _nodedb->setChannel(0, mesh_config.primary_channel);
+    _nodedb->saveChannels();
 
 #if HAL_USE_RADIO
     if (!_mesh->init(_radio, _nodedb, mesh_config))

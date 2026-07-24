@@ -253,8 +253,8 @@ public:
 
                 node_info.has_position = parser.hasLatLon();
                 if (parser.hasLatLon()) {
-                    node_info.position.latitude_i = parser.getIntLat();
-                    node_info.position.longitude_i = parser.getIntLon();
+                    node_info.position.latitude_i = (int32_t)(parser.getLat() * 1e7);
+                    node_info.position.longitude_i = (int32_t)(parser.getLon() * 1e7);
                 }
                 node_info.snr = packet->getSNR();
                 node_info.last_heard = timestamp;

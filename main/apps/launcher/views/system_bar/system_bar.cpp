@@ -75,30 +75,14 @@ void Launcher::_update_system_bar()
             _data.hal->canvas_system_bar()->fillRoundRect(x, y + 1, short_width, 14, 4, nc);
             _data.hal->canvas_system_bar()->setFont(FONT_12);
             _data.hal->canvas_system_bar()->setTextColor(ntc, nc);
-            _data.hal->canvas_system_bar()->drawCenterString(display_name.c_str(), x + short_width / 2, y + 1);
             x += short_width + PADDING_X + 2;
 
-            // Channel utilization / Air utilization TX (2 lines, FONT_6)
-            float ch_util = _data.hal->mesh()->getChannelUtilization();
-            float air_util = _data.hal->mesh()->getAirUtilTx();
-            _data.hal->canvas_system_bar()->setFont(FONT_6);
-            _data.hal->canvas_system_bar()->setTextColor(THEME_COLOR_SYSTEM_BAR_TEXT, THEME_COLOR_SYSTEM_BAR);
-            _data.hal->canvas_system_bar()->drawString(std::format("{:2.0f}%", ch_util).c_str(), x, y + 2);
-            _data.hal->canvas_system_bar()->drawString(std::format("{:2.0f}%", air_util).c_str(), x, y + 9);
-            x += 18 + PADDING_X;
-
-            _data.hal->canvas_system_bar()->setFont(FONT_12);
-        }
-        _data.hal->canvas_system_bar()->setFont(FONT_16);
-        // Time & GPS Status Indicator
-        bool show_time = _data.hal->settings()->getBool("system", "show_time");
-        if (show_time)
-        {
+            // Render GPS indicator immediately to the right of the name pill
 #if HAL_USE_GPS
             bool gps_enabled = _data.hal->settings()->getBool("gps", "enabled");
             if (gps_enabled && _data.hal->gps())
             {
-                int icon_x = _data.hal->canvas_system_bar()->width() / 2 - 8 - 36;
+                int icon_x = x;
                 if (_data.hal->gps()->hasFix())
                 {
                     // Fix acquired: Green satellite icon + sat count
@@ -118,6 +102,12 @@ void Launcher::_update_system_bar()
                 }
             }
 #endif
+        }
+        _data.hal->canvas_system_bar()->setFont(FONT_16);
+        // Time
+        bool show_time = _data.hal->settings()->getBool("system", "show_time");
+        if (show_time)
+        {
             _data.hal->canvas_system_bar()->setFont(FONT_16);
             _data.hal->canvas_system_bar()->setTextColor(THEME_COLOR_SYSTEM_BAR_TEXT);
             _data.hal->canvas_system_bar()->drawCenterString(_data.system_state.time.c_str(),

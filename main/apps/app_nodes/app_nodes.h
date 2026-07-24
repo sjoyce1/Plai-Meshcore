@@ -115,8 +115,8 @@ namespace MOONCAKE::APPS
             int qm_scroll_offset;
 
             // Map view state
-            float map_center_lat;
-            float map_center_lon;
+            double map_center_lat;
+            double map_center_lon;
             int map_zoom;
             char map_tile_dir[64];
             int map_style_idx;

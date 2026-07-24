@@ -2220,8 +2220,6 @@ void AppNodes::_handle_node_list_input()
             if (_selected_node_valid())
             {
                 _data.selected_node_id = _data.selected_node.info.num;
-                _data.map_center_lat = 0;
-                _data.map_center_lon = 0;
                 _data.map_zoom = MAP_DEFAULT_ZOOM;
 
                 {
@@ -2233,14 +2231,46 @@ void AppNodes::_handle_node_list_input()
                     _data.map_style_idx = (int)(&sc - MAP_STYLES);
                 }
 
+                double center_lat = 0.0, center_lon = 0.0;
+                bool found_center = false;
+
                 if (_data.selected_node.info.has_position)
                 {
                     const auto& pos = _data.selected_node.info.position;
                     if (pos.latitude_i != 0 || pos.longitude_i != 0)
                     {
-                        _data.map_center_lat = pos.latitude_i * 1e-7f;
-                        _data.map_center_lon = pos.longitude_i * 1e-7f;
+                        center_lat = pos.latitude_i * 1e-7;
+                        center_lon = pos.longitude_i * 1e-7;
+                        found_center = true;
                     }
+                }
+#if HAL_USE_GPS
+                if (!found_center && _data.hal->gps() && _data.hal->gps()->hasFix())
+                {
+                    center_lat = _data.hal->gps()->getLatitude();
+                    center_lon = _data.hal->gps()->getLongitude();
+                    found_center = true;
+                }
+#endif
+                if (!found_center && _data.hal->nodedb())
+                {
+                    const auto& index = _data.hal->nodedb()->getIndex();
+                    for (const auto& entry : index)
+                    {
+                        if (entry.latitude_i != 0 || entry.longitude_i != 0)
+                        {
+                            center_lat = entry.latitude_i * 1e-7;
+                            center_lon = entry.longitude_i * 1e-7;
+                            found_center = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (found_center)
+                {
+                    _data.map_center_lat = center_lat;
+                    _data.map_center_lon = center_lon;
                 }
 
                 _data.view_state = ViewState::NODE_MAP;
@@ -2335,8 +2365,6 @@ void AppNodes::_handle_node_detail_input()
             _data.hal->playNextSound();
             _data.hal->keyboard()->waitForRelease(KEY_NUM_M);
 
-            _data.map_center_lat = 0;
-            _data.map_center_lon = 0;
             _data.map_zoom = MAP_DEFAULT_ZOOM;
 
             {
@@ -2348,14 +2376,46 @@ void AppNodes::_handle_node_detail_input()
                 _data.map_style_idx = (int)(&sc - MAP_STYLES);
             }
 
+            double center_lat = 0.0, center_lon = 0.0;
+            bool found_center = false;
+
             if (_data.selected_node_valid && _data.selected_node.info.has_position)
             {
                 const auto& pos = _data.selected_node.info.position;
                 if (pos.latitude_i != 0 || pos.longitude_i != 0)
                 {
-                    _data.map_center_lat = pos.latitude_i * 1e-7f;
-                    _data.map_center_lon = pos.longitude_i * 1e-7f;
+                    center_lat = pos.latitude_i * 1e-7;
+                    center_lon = pos.longitude_i * 1e-7;
+                    found_center = true;
                 }
+            }
+#if HAL_USE_GPS
+            if (!found_center && _data.hal->gps() && _data.hal->gps()->hasFix())
+            {
+                center_lat = _data.hal->gps()->getLatitude();
+                center_lon = _data.hal->gps()->getLongitude();
+                found_center = true;
+            }
+#endif
+            if (!found_center && _data.hal->nodedb())
+            {
+                const auto& index = _data.hal->nodedb()->getIndex();
+                for (const auto& entry : index)
+                {
+                    if (entry.latitude_i != 0 || entry.longitude_i != 0)
+                    {
+                        center_lat = entry.latitude_i * 1e-7;
+                        center_lon = entry.longitude_i * 1e-7;
+                        found_center = true;
+                        break;
+                    }
+                }
+            }
+
+            if (found_center)
+            {
+                _data.map_center_lat = center_lat;
+                _data.map_center_lon = center_lon;
             }
 
             _data.view_state = ViewState::NODE_MAP;
@@ -4272,7 +4332,40 @@ bool AppNodes::_map_draw_tile(int tx, int ty, int zoom, int screen_x, int screen
         return false;
 
     char path[128];
-    snprintf(path, sizeof(path), "%s/%d/%d/%d.jpg", _data.map_tile_dir, zoom, tx, ty);
+    bool found = false;
+    bool is_png = false;
+
+    // Search paths in order of preference
+    const char* candidates[6][2] = {
+        { "%s/%d/%d/%d.png", _data.map_tile_dir },
+        { "%s/%d/%d/%d.jpg", _data.map_tile_dir },
+        { "/sdcard/map/%d/%d/%d.png", nullptr },
+        { "/sdcard/map/%d/%d/%d.jpg", nullptr },
+        { "/sdcard/map/osm/%d/%d/%d.png", nullptr },
+        { "/sdcard/map/osm/%d/%d/%d.jpg", nullptr }
+    };
+
+    for (int i = 0; i < 6; i++)
+    {
+        if (candidates[i][1])
+            snprintf(path, sizeof(path), candidates[i][0], candidates[i][1], zoom, tx, ty);
+        else
+            snprintf(path, sizeof(path), candidates[i][0], zoom, tx, ty);
+
+        FILE* f = fopen(path, "rb");
+        if (f)
+        {
+            fclose(f);
+            found = true;
+            const char* ext = strrchr(path, '.');
+            if (ext && strcmp(ext, ".png") == 0)
+                is_png = true;
+            break;
+        }
+    }
+
+    if (!found)
+        return false;
 
     auto* canvas = _data.hal->canvas();
 
@@ -4299,7 +4392,10 @@ bool AppNodes::_map_draw_tile(int tx, int ty, int zoom, int screen_x, int screen
     if (draw_w <= 0 || draw_h <= 0)
         return false;
 
-    return canvas->drawJpgFile(path, dst_x, dst_y, draw_w, draw_h, src_x, src_y);
+    if (is_png)
+        return canvas->drawPngFile(path, dst_x, dst_y, draw_w, draw_h, src_x, src_y);
+    else
+        return canvas->drawJpgFile(path, dst_x, dst_y, draw_w, draw_h, src_x, src_y);
 }
 
 bool AppNodes::_render_node_map()

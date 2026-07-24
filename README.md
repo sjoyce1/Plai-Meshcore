@@ -1,4 +1,4 @@
-# Plai-Meshcore
+# Plai-Meshcore (v0.7beta)
 
 Plai-Meshcore is a port of the beautiful **Plai** M5Stack Cardputer communicator application from Meshtastic to the lightweight, decentralized **MeshCore** networking stack. 
 
@@ -13,9 +13,20 @@ This repository decouples the Plai UI from the heavy Meshtastic backend, tying t
 *   **Direct Messaging (P2P)**: Ed25519-signed, Curve25519 ECDH-encrypted, authenticated peer-to-peer 1-on-1 private messaging.
 *   **MeshCore ACK Protocol**: Fully automated over-the-air ACK packet (`PAYLOAD_TYPE_ACK`) responses to confirm DM delivery and stop sender retries.
 *   **Group Channel Broadcasts**: Broadly accessible mesh-wide message broadcasting with AES-128 / HMAC-SHA256 authentication.
-*   **Auto-Contact Discovery**: Automatic NodeDB contact creation from group message headers and Ed25519 key exchange via 30s `PAYLOAD_TYPE_ADVERT` broadcasts.
+*   **Auto-Contact Discovery & GPS Adverts**: Automatic NodeDB contact creation from group message headers and Ed25519 key exchange via 30s `PAYLOAD_TYPE_ADVERT` broadcasts (including live GPS coordinates).
+*   **🛰️ GPS Controls & Live Status Indicator**:
+    *   **On-Screen System Bar Indicator**: 🟢 Green satellite icon + sat count when fixed, 🟡 Yellow satellite + `?` when searching, hidden when disabled.
+    *   **Automatic GPS Time Sync**: Atomic UTC system clock synchronization upon satellite lock.
+    *   **Manual GPS Sync & Diagnostics**: Query satellite lock, satellite count, and UTC time directly from Settings.
+*   **🕒 Clock & Timezone Management**:
+    *   **POSIX Timezone Support**: Automatic Daylight Saving Time handling for US-Central, US-Eastern, US-Mountain, and US-Pacific timezones.
+    *   **OTA Mesh Clock Sync**: Automatic clock synchronization from over-the-air packet timestamps.
+    *   **Manual Clock Tool**: 24h `HH:MM` time adjustment in Settings.
+*   **🗺️ Offline Map Tile Renderer**:
+    *   Slippy map tile support directly from SD card (`/sdcard/map/<style>/<zoom>/<x>/<y>.jpg` or `.png`).
+    *   Smart 64-bit double-precision auto-centering on selected node or live GPS fix up to Zoom 18.
 *   **On-Screen Live Serial Console**: Color-coded, scrolling system terminal log viewer (`MONITOR` app) built directly into the UI.
-*   **Local SD Card Logging**: Message persistence and historical conversation logging using FATFS on SD card.
+*   **Dynamic SX1262 Radio Reconfiguration**: Modify Frequency (MHz), Bandwidth (kHz), Spreading Factor (SF7-SF12), Coding Rate, Transmit Power (dBm), Sync Word, and PSK live without rebooting.
 
 ---
 
@@ -23,17 +34,17 @@ This repository decouples the Plai UI from the heavy Meshtastic backend, tying t
 
 The main startup carousel features five streamlined applications:
 
-1. 👥 **CONTACTS** (`AppNodes`): Contact list, node details, and 1-on-1 Direct Messaging.
+1. 👥 **CONTACTS** (`AppNodes`): Contact list, node details, 1-on-1 Direct Messaging, and offline map view.
 2. 📻 **CHANNELS** (`AppChannels`): Group mesh chat channels (Public & encrypted channels).
 3. 🖥️ **MONITOR** (`AppMonitor`): Live on-screen color-coded serial log console logger.
-4. 📊 **STATS** (`AppStats`): System, hardware, and radio statistics.
-5. ⚙️ **SETTINGS** (`AppSettings`): System preferences, volume, brightness, and WiFi.
+4. 📊 **STATS** (`AppStats`): System, hardware, battery, and radio statistics.
+5. ⚙️ **SETTINGS** (`AppSettings`): System preferences, timezone, GPS configuration, radio parameters, and security keys.
 
 ---
 
 ## 📡 Default Radio & Channel Parameters
 
-| Parameter | Value |
+| Parameter | Default Value |
 | :--- | :--- |
 | **Frequency** | `910.525 MHz` |
 | **Bandwidth** | `62.5 kHz` |
@@ -76,16 +87,16 @@ Set up the ESP-IDF environment and build:
 idf.py build
 
 # Flash and Monitor
-idf.py -p PORT flash monitor
+idf.py -p COM10 flash monitor
 ```
 
 ---
 
 ## 📂 Architecture Overview
 
-*   **`main/mesh/meshcore_bridge.h`**: The bridge class routing data streams between the UI and the underlying MeshCore stack, including DM ACK generation and advert handshakes.
+*   **`main/mesh/meshcore_bridge.h`**: The bridge class routing data streams between the UI and the underlying MeshCore stack, including DM ACK generation, advert handshakes, and OTA clock sync.
 *   **`main/mesh/console_logger.h`**: Captures ESP-IDF `vprintf` log streams into a thread-safe RAM buffer for the on-screen console viewer.
 *   **`main/apps/app_monitor/`**: Live color-coded serial log console renderer with manual scrolling and auto-scroll modes.
-*   **`main/mesh/mesh_service.cpp`**: Startup initialization, node databases (`NodeDB`), and automated periodic advertisement triggers.
+*   **`main/mesh/mesh_service.cpp`**: Startup initialization, node databases (`NodeDB`), automated periodic advertisement triggers, and GPS data handling.
+*   **`main/apps/app_nodes/`**: Contacts app featuring contact management, DM chat view, and Slippy map tile renderer.
 *   **`main/mesh/meshcore/`**: Lightweight decentralized networking layer managing routing tables, packet dispatch, flooding, and cryptography.
-*   **`components/LovyanGFX/` & `components/mooncake/`**: UI components and framework drivers.

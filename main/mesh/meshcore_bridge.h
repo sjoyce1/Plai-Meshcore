@@ -289,12 +289,17 @@ public:
         return false;
     }
 
-    Packet* createSelfAdvert(const char* name) {
+    Packet* createSelfAdvert(const char* name, double lat = 0.0, double lon = 0.0, bool has_loc = false) {
         uint8_t app_data[MAX_ADVERT_DATA_SIZE];
         uint8_t app_data_len;
         {
-            AdvertDataBuilder builder(ADV_TYPE_CHAT, name);
-            app_data_len = builder.encodeTo(app_data);
+            if (has_loc) {
+                AdvertDataBuilder builder(ADV_TYPE_CHAT, name, lat, lon);
+                app_data_len = builder.encodeTo(app_data);
+            } else {
+                AdvertDataBuilder builder(ADV_TYPE_CHAT, name);
+                app_data_len = builder.encodeTo(app_data);
+            }
         }
         return createAdvert(self_id, app_data, app_data_len);
     }

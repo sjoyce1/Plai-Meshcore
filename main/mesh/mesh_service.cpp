@@ -372,8 +372,26 @@ namespace Mesh
             {
                 name = "Cardputer";
             }
-            ESP_LOGI(TAG, "sendNodeInfo: creating advert for '%s'", name);
-            auto pkt = _bridge->createSelfAdvert(name);
+
+            double lat = 0.0, lon = 0.0;
+            bool has_loc = false;
+#if HAL_USE_GPS
+            if (_hal && _hal->gps() && _hal->gps()->hasFix())
+            {
+                lat = _hal->gps()->getLatitude();
+                lon = _hal->gps()->getLongitude();
+                has_loc = true;
+            }
+#endif
+            if (!has_loc && _config.position == MeshConfig::POSITION_FIXED)
+            {
+                lat = (double)_config.fixed_latitude / 1e7;
+                lon = (double)_config.fixed_longitude / 1e7;
+                has_loc = true;
+            }
+
+            ESP_LOGI(TAG, "sendNodeInfo: creating advert for '%s' (has_loc=%d)", name, has_loc);
+            auto pkt = _bridge->createSelfAdvert(name, lat, lon, has_loc);
             if (pkt)
             {
                 _bridge->sendFlood(pkt);

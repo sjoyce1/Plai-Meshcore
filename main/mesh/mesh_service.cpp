@@ -294,6 +294,37 @@ namespace Mesh
         {
             _bridge->self_id.readFromSeed(_config.private_key);
         }
+
+        // Apply radio physical parameters to SX1262 hardware driver
+        if (_hal && _hal->radio())
+        {
+            HAL::LoRaConfig lora_cfg = _hal->radio()->getConfig();
+            lora_cfg.frequency_hz = (uint32_t)(_config.lora_config.override_frequency * 1000000.0f);
+            lora_cfg.bandwidth_hz = (uint32_t)(_config.lora_config.bandwidth * 1000.0f);
+            lora_cfg.spreading_factor = _config.lora_config.spread_factor;
+            lora_cfg.coding_rate = _config.lora_config.coding_rate;
+            lora_cfg.tx_power_dbm = (int8_t)_config.lora_config.tx_power;
+            lora_cfg.sync_word = (uint8_t)_config.sync_word;
+            _hal->radio()->setConfig(lora_cfg);
+        }
+
+        // Apply primary public channel PSK if changed
+        if (!_config.primary_psk_b64.empty() && _nodedb)
+        {
+            size_t psk_len = 0;
+            uint8_t psk_bytes[32];
+            if (mbedtls_base64_decode(psk_bytes, 32, &psk_len, (const unsigned char*)_config.primary_psk_b64.c_str(), _config.primary_psk_b64.size()) == 0 && (psk_len == 16 || psk_len == 32))
+            {
+                meshtastic_Channel* ch0 = _nodedb->getChannel(0);
+                if (ch0)
+                {
+                    memcpy(ch0->settings.psk.bytes, psk_bytes, psk_len);
+                    ch0->settings.psk.size = psk_len;
+                    _nodedb->saveChannels();
+                }
+            }
+        }
+
         return true;
     }
 
@@ -382,6 +413,8 @@ namespace Mesh
     void MeshService::loadConfigFromSettings(MeshConfig& config)
     {
         SETTINGS::Settings* _settings = _hal->settings();
+
+        // 1. Node Info
         std::string short_name = _settings->getString("nodeinfo", "short_name");
         std::string long_name = _settings->getString("nodeinfo", "long_name");
         if (!short_name.empty())
@@ -394,34 +427,53 @@ namespace Mesh
             strncpy(config.long_name, long_name.c_str(), sizeof(config.long_name) - 1);
             config.long_name[sizeof(config.long_name) - 1] = '\0';
         }
-        config.is_unmessagable = _settings->getBool("nodeinfo", "unmessagable");
-        config.role = roleFromName(_settings->getString("nodeinfo", "role"));
-        config.rebroadcast_mode = rebroadcastModeFromName(_settings->getString("nodeinfo", "rebroadcast"));
 
-        config.lora_config.region = Mesh::MeshService::regionCodeFromName(_settings->getString("lora", "region"));
-        const std::string modem_preset_name = _settings->getString("lora", "modem_preset");
-        if (modem_preset_name == "Custom")
+        // 2. LoRa Radio Config
+        std::string freq_str = _settings->getString("lora", "frequency");
+        if (!freq_str.empty())
         {
-            config.lora_config.use_preset = false;
-            config.lora_config.bandwidth = _settings->getNumber("lora", "bandwidth");
-            config.lora_config.coding_rate = _settings->getNumber("lora", "coding_rate");
-            config.lora_config.spread_factor = _settings->getNumber("lora", "spread_factor");
+            float f = strtof(freq_str.c_str(), nullptr);
+            if (f > 0.0f) config.lora_config.override_frequency = f;
         }
-        else
+        if (config.lora_config.override_frequency <= 0.0f)
         {
-            config.lora_config.modem_preset = modemPresetFromName(modem_preset_name);
-            config.lora_config.use_preset = true;
+            config.lora_config.override_frequency = 910.525f;
         }
+
+        std::string bw_str = _settings->getString("lora", "bandwidth");
+        if (!bw_str.empty())
+        {
+            float bw = strtof(bw_str.c_str(), nullptr);
+            if (bw > 0.0f) config.lora_config.bandwidth = bw;
+        }
+        if (config.lora_config.bandwidth <= 0.0f)
+        {
+            config.lora_config.bandwidth = 62.5f;
+        }
+
+        int sf = _settings->getNumber("lora", "spread_factor");
+        config.lora_config.spread_factor = (sf >= 7 && sf <= 12) ? sf : 7;
+
+        int cr = _settings->getNumber("lora", "coding_rate");
+        config.lora_config.coding_rate = (cr >= 5 && cr <= 8) ? cr : 5;
+
         config.lora_config.tx_power = _settings->getNumber("lora", "tx_power");
-        config.lora_config.override_duty_cycle = _settings->getBool("lora", "duty_ovr");
-        config.lora_config.sx126x_rx_boosted_gain = _settings->getBool("lora", "rx_boost");
-        config.lora_config.hop_limit = _settings->getNumber("lora", "hop_limit");
-        config.lora_config.channel_num = _settings->getNumber("lora", "freq_slot");
-        int32_t freq_ovr_khz = _settings->getNumber("lora", "freq_ovr");
-        config.lora_config.override_frequency = (freq_ovr_khz > 0) ? (float)freq_ovr_khz / 1000.0f : 0.0f;
-        config.lora_config.ignore_mqtt = !_settings->getBool("lora", "mqtt_rx");
-        config.lora_config.config_ok_to_mqtt = _settings->getBool("lora", "mqtt_tx");
+        if (config.lora_config.tx_power == 0) config.lora_config.tx_power = 22;
 
+        int sync_w = _settings->getNumber("lora", "sync_word");
+        config.sync_word = (sync_w > 0) ? sync_w : 18; // 0x12
+
+        // 3. MeshCore Network Settings
+        int adv_int = _settings->getNumber("meshcore", "advert_interval");
+        config.advert_interval = (adv_int >= 0) ? adv_int : 30;
+
+        int hops = _settings->getNumber("meshcore", "hop_limit");
+        config.lora_config.hop_limit = (hops >= 1 && hops <= 7) ? hops : 3;
+
+        std::string psk = _settings->getString("meshcore", "primary_psk");
+        if (!psk.empty()) config.primary_psk_b64 = psk;
+
+        // 4. Security Keys
         std::string priv_b64 = _settings->getString("security", "private_key");
         std::string pub_b64 = _settings->getString("security", "public_key");
         if (!priv_b64.empty() && !pub_b64.empty())

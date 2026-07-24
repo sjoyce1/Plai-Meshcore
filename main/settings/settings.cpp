@@ -94,42 +94,49 @@ namespace SETTINGS
             if (_hal && _hal->mesh())
                 _hal->mesh()->forceNodeInfoBroadcast();
         };
-        // LoRa settings
+        // Node identity
+        SettingGroup_t nodeinfo_group;
+        nodeinfo_group.name = "Node identity";
+        nodeinfo_group.nvs_namespace = "nodeinfo";
+        nodeinfo_group.items = {
+            back_item,
+            {"long_name", "Owner name", TYPE_STRING, "Cardputer", "Cardputer", "", "40", "Node owner name broadcasted over mesh", nodeinfo_apply_cb},
+            {"short_name", "Short handle", TYPE_STRING, "6A6E", "6A6E", "", "4", "4-character node handle", nodeinfo_apply_cb},
+        };
+
+        // LoRa radio settings
         SettingGroup_t lora_group;
-        lora_group.name = "LoRa config";
+        lora_group.name = "LoRa radio config";
         lora_group.nvs_namespace = "lora";
         lora_group.items = {
             back_item,
-            {"region",
-             "Region",
+            {"frequency",
+             "Frequency (MHz)",
              TYPE_STRING,
-             "EU_433",
-             "EU_433",
-             "UNSET;US;EU_433;EU_868;CN;JP;ANZ;KR;TW;RU;IN;NZ_865;TH;LORA_24;UA_433;UA_868;MY_919;SG_923;BR_902",
+             "910.525",
+             "910.525",
+             "433.0;868.0;902.0;910.525;915.0;923.0",
              "",
-             "LoRa region code",
-             mesh_apply_cb},
-            {"modem_preset",
-             "Modem preset",
-             TYPE_STRING,
-             "LongFast",
-             "LongFast",
-             "LongFast;LongSlow;VeryLongSlow;MediumSlow;MediumFast;ShortFast;ShortSlow;LongModerate;ShortTurbo;LongTurbo;"
-             "Custom",
-             "",
-             "LoRa modem preset (Custom = set bandwidth/coding rate/spreading factor manually)",
+             "Operating frequency in MHz",
              mesh_apply_cb},
             {"bandwidth",
-             "Bandwidth",
+             "Bandwidth (kHz)",
+             TYPE_STRING,
+             "62.5",
+             "62.5",
+             "7.8;15.6;31.25;62.5;125.0;250.0;500.0",
+             "",
+             "LoRa signal bandwidth in kHz",
+             mesh_apply_cb},
+            {"spread_factor",
+             "Spreading factor",
              TYPE_NUMBER,
-             "250",
-             "250",
-             "0",
-             "1600",
-             "LoRa bandwidth in kHz (e.g. 31, 62, 125, 250, 500). Only used in Custom preset",
-             mesh_apply_cb,
-             "modem_preset",
-             "Custom"},
+             "7",
+             "7",
+             "7",
+             "12",
+             "LoRa spreading factor (SF7 - SF12)",
+             mesh_apply_cb},
             {"coding_rate",
              "Coding rate",
              TYPE_NUMBER,
@@ -137,74 +144,66 @@ namespace SETTINGS
              "5",
              "5",
              "8",
-             "LoRa coding rate denominator 4/N (5-8). Only used in Custom preset",
-             mesh_apply_cb,
-             "modem_preset",
-             "Custom"},
-            {"spread_factor",
-             "Spreading factor",
+             "Coding rate denominator 4/N (5 = 4/5)",
+             mesh_apply_cb},
+            {"tx_power",
+             "TX power (dBm)",
              TYPE_NUMBER,
-             "11",
-             "11",
-             "7",
-             "12",
-             "LoRa spreading factor (7-12). Only used in Custom preset",
-             mesh_apply_cb,
-             "modem_preset",
-             "Custom"},
-            {"freq_slot",
-             "Frequency slot",
+             "22",
+             "22",
+             "-9",
+             "22",
+             "Transmit power in dBm (-9 to 22)",
+             mesh_apply_cb},
+            {"sync_word",
+             "Sync word",
              TYPE_NUMBER,
-             "0",
-             "0",
+             "18",
+             "18",
              "0",
              "255",
-             "Frequency slot number (0 = auto)",
+             "Radio sync word (18 = MeshCore 0x12)",
              mesh_apply_cb},
-            {"freq_ovr",
-             "Freq. override",
+        };
+
+        // MeshCore network settings
+        SettingGroup_t meshcore_group;
+        meshcore_group.name = "MeshCore network";
+        meshcore_group.nvs_namespace = "meshcore";
+        meshcore_group.items = {
+            back_item,
+            {"advert_interval",
+             "Advert secs",
              TYPE_NUMBER,
+             "30",
+             "30",
              "0",
-             "0",
-             "0",
-             "999999",
-             "Override frequency in kHz (0 = disabled)",
+             "3600",
+             "Periodic advert broadcast interval in seconds (0 = off)",
              mesh_apply_cb},
             {"hop_limit",
-             "Number of hops",
+             "Max hops",
              TYPE_NUMBER,
              "3",
              "3",
              "1",
              "7",
-             "Maximum number of hops for mesh routing (1-7)",
+             "Maximum mesh routing hops (1-7)",
              mesh_apply_cb},
-            {"duty_ovr",
-             "Duty cycle override",
-             TYPE_BOOL,
-             "false",
-             "false",
+            {"primary_psk",
+             "Public PSK",
+             TYPE_STRING,
+             "izOH6cXN6mrJ5e26oRXNcg==",
+             "izOH6cXN6mrJ5e26oRXNcg==",
              "",
              "",
-             "Override duty cycle limit",
+             "Base64 primary public channel PSK",
              mesh_apply_cb},
-            {"rx_boost", "RX boost", TYPE_BOOL, "false", "false", "", "", "Enable SX126x RX boosted gain", mesh_apply_cb},
-            {"tx_power", "TX power", TYPE_NUMBER, "22", "22", "-9", "22", "Transmit power in dBm (-9 to 22)", mesh_apply_cb},
-            {"mqtt_rx",
-             "MQTT RX",
-             TYPE_BOOL,
-             "true",
-             "true",
-             "",
-             "",
-             "Accept packets passed via MQTT anywhere on the path towards this node",
-             mesh_apply_cb},
-            {"mqtt_tx", "MQTT TX", TYPE_BOOL, "true", "true", "", "", "Set ok_to_mqtt bit on outgoing packets", mesh_apply_cb},
         };
 
         // Security settings
         SettingGroup_t security_group;
-        security_group.name = "Security";
+        security_group.name = "Security & keys";
         security_group.nvs_namespace = "security";
         security_group.items = {
             back_item,
@@ -215,7 +214,7 @@ namespace SETTINGS
              "",
              "",
              "",
-             "X25519 private key (base64). Auto-generated if empty",
+             "Ed25519 private key (base64). Auto-generated if empty",
              mesh_apply_cb},
             {"derive_key",
              "Derive public key...",
@@ -284,7 +283,7 @@ namespace SETTINGS
              "",
              "",
              "",
-             "X25519 public key (base64). Auto-generated if empty",
+             "Ed25519 public key (base64). Auto-generated if empty",
              mesh_apply_cb},
             {"regen_keys",
              "Regenerate keys...",
@@ -293,7 +292,7 @@ namespace SETTINGS
              "",
              "",
              "",
-             "Generate new X25519 key pair",
+             "Generate new Ed25519 key pair",
              [this](SettingItem_t& item)
              {
                  if (_hal)
@@ -313,7 +312,6 @@ namespace SETTINGS
                      b64_len = 0;
                      if (mbedtls_base64_encode(b64, sizeof(b64), &b64_len, pub_key, 32) == 0)
                          setString("security", "public_key", std::string((char*)b64, b64_len));
-                     // apply the changes to the mesh
                      applyMeshConfig(item);
                  }
                  else
@@ -324,15 +322,6 @@ namespace SETTINGS
                      }
                  }
              }},
-            {"invitations",
-             "Invitations",
-             TYPE_BOOL,
-             "true",
-             "true",
-             "",
-             "",
-             "Allow auto add chennels by invitations in DM. Format: #invite LongFast=AQ==",
-             mesh_apply_cb},
             {"clear_nodes",
              "Clear all nodes...",
              TYPE_CALLBACK,
@@ -340,7 +329,7 @@ namespace SETTINGS
              "",
              "",
              "",
-             "Delete all nodes, DMs and traceroute logs",
+             "Delete all nodes, DMs and conversation logs",
              [this](SettingItem_t& item)
              {
                  if (!_hal || !_hal->nodedb())
@@ -353,231 +342,6 @@ namespace SETTINGS
                  _hal->nodedb()->save();
                  UTILS::UI::show_error_dialog(_hal, "Done", "All nodes cleared", "OK");
              }},
-        };
-
-        // Node info settings
-        SettingGroup_t nodeinfo_group;
-        nodeinfo_group.name = "Node info";
-        nodeinfo_group.nvs_namespace = "nodeinfo";
-        nodeinfo_group.items = {
-            back_item,
-            {"long_name", "Long name", TYPE_STRING, "", "", "", "40", "Long name for this node", nodeinfo_apply_cb},
-            {"short_name",
-             "Short name",
-             TYPE_STRING,
-             "",
-             "",
-             "",
-             "4",
-             "Short name for this node (max 4 characters)",
-             nodeinfo_apply_cb},
-            {"unmessagable",
-             "Unmessagable",
-             TYPE_BOOL,
-             "false",
-             "false",
-             "",
-             "",
-             "Node does not accept messages",
-             nodeinfo_apply_cb},
-            {"ham_licensed",
-             "HAM licensed",
-             TYPE_BOOL,
-             "false",
-             "false",
-             "",
-             "",
-             "HAM radio licensed operator",
-             nodeinfo_apply_cb},
-            {"role",
-             "Role",
-             TYPE_STRING,
-             "Client",
-             "Client",
-             "Client;Client Mute;Client Hidden;Client Base;Router;Router Client;Router Late;Repeater;Tracker;Sensor;TAK;TAK "
-             "Tracker;Lost&Found",
-             "",
-             "Device role (affects routing behavior)",
-             nodeinfo_apply_cb},
-            {"rebroadcast",
-             "Rebroadcast",
-             TYPE_STRING,
-             "All",
-             "All",
-             "All;All skip decode;Local only;Known only;None",
-             "",
-             "Rebroadcast mode for received packets",
-             nodeinfo_apply_cb},
-            {"bcast_int",
-             "Broadcast interval",
-             TYPE_STRING,
-             "1h",
-             "1h",
-             "off;15m;30m;1h;2h;4h;8h;12h;24h",
-             "",
-             "Node info broadcast interval",
-             nodeinfo_apply_cb},
-        };
-
-        // Neighbor info settings
-        SettingGroup_t neighborinfo_group;
-        neighborinfo_group.name = "Neighbor info";
-        neighborinfo_group.nvs_namespace = "neighborinfo";
-        neighborinfo_group.items = {
-            back_item,
-            {"enabled", "Enabled", TYPE_BOOL, "false", "false", "", "", "Enable neighbor info module", mesh_apply_cb},
-            {"bcast_int",
-             "Broadcast interval",
-             TYPE_STRING,
-             "4h",
-             "4h",
-             "off;1h;2h;3h;4h;6h;12h;24h",
-             "",
-             "Neighbor info broadcast interval",
-             mesh_apply_cb},
-        };
-
-        // Position info settings
-        SettingGroup_t position_group;
-        position_group.name = "Position info";
-        position_group.nvs_namespace = "position";
-        position_group.items = {
-            back_item,
-            {"location",
-             "Location",
-             TYPE_STRING,
-             "fixed",
-             "fixed",
-             "off;fixed;gps",
-             "",
-             "Position source (fixed coordinates or live GPS, off = disabled)",
-             mesh_apply_cb},
-            {"latitude",
-             "Latitude fix",
-             TYPE_NUMBER,
-             "0",
-             "0",
-             "-900000000",
-             "900000000",
-             "Fixed latitude (degrees * 1e7, e.g. 504233000 = 50.4233N)",
-             mesh_apply_cb,
-             "location",
-             "fixed"},
-            {"longitude",
-             "Longitude fix",
-             TYPE_NUMBER,
-             "0",
-             "0",
-             "-1800000000",
-             "1800000000",
-             "Fixed longitude (degrees * 1e7, e.g. 304167000 = 30.4167E)",
-             mesh_apply_cb,
-             "location",
-             "fixed"},
-            {"altitude",
-             "Altitude fix",
-             TYPE_NUMBER,
-             "0",
-             "0",
-             "-1000",
-             "100000",
-             "Fixed altitude above sea level (meters)",
-             mesh_apply_cb,
-             "location",
-             "fixed"},
-            {"pos_alt", "Altitude", TYPE_BOOL, "true", "true", "", "", "Include altitude in position broadcast", mesh_apply_cb},
-            {"pos_sats",
-             "Satellites",
-             TYPE_BOOL,
-             "true",
-             "true",
-             "",
-             "",
-             "Include satellite count in position broadcast",
-             mesh_apply_cb},
-            {"pos_seq",
-             "Sequence",
-             TYPE_BOOL,
-             "false",
-             "false",
-             "",
-             "",
-             "Include sequence number in position broadcast",
-             mesh_apply_cb},
-            {"pos_time",
-             "Timestamp",
-             TYPE_BOOL,
-             "true",
-             "true",
-             "",
-             "",
-             "Include timestamp in position broadcast",
-             mesh_apply_cb},
-            {"pos_heading",
-             "Heading",
-             TYPE_BOOL,
-             "false",
-             "false",
-             "",
-             "",
-             "Include heading in position broadcast",
-             mesh_apply_cb},
-            {"pos_speed", "Speed", TYPE_BOOL, "false", "false", "", "", "Include speed in position broadcast", mesh_apply_cb},
-            {"bcast_int",
-             "Broadcast interval",
-             TYPE_STRING,
-             "1h",
-             "1h",
-             "off;15m;30m;1h;2h;4h;8h;12h;24h",
-             "",
-             "Position broadcast interval",
-             mesh_apply_cb},
-        };
-
-        // Device metrics settings
-        SettingGroup_t devmetrics_group;
-        devmetrics_group.name = "Device metrics";
-        devmetrics_group.nvs_namespace = "devmetrics";
-        devmetrics_group.items = {
-            back_item,
-            {"bat_level",
-             "Battery level",
-             TYPE_BOOL,
-             "true",
-             "true",
-             "",
-             "",
-             "Include battery level in telemetry",
-             mesh_apply_cb},
-            {"voltage", "Voltage", TYPE_BOOL, "true", "true", "", "", "Include battery voltage in telemetry", mesh_apply_cb},
-            {"ch_util",
-             "Channel utilization",
-             TYPE_BOOL,
-             "true",
-             "true",
-             "",
-             "",
-             "Include channel utilization in telemetry",
-             mesh_apply_cb},
-            {"air_util",
-             "Air utilization",
-             TYPE_BOOL,
-             "true",
-             "true",
-             "",
-             "",
-             "Include air utilization TX in telemetry",
-             mesh_apply_cb},
-            {"uptime", "Uptime seconds", TYPE_BOOL, "true", "true", "", "", "Include uptime in telemetry", mesh_apply_cb},
-            {"bcast_int",
-             "Broadcast interval",
-             TYPE_STRING,
-             "1h",
-             "1h",
-             "off;15m;30m;1h;2h;4h;8h;12h;24h",
-             "",
-             "Device metrics broadcast interval",
-             mesh_apply_cb},
         };
 
         SettingGroup_t export_group;
@@ -614,17 +378,6 @@ namespace SETTINGS
                 importFromFile(SETTINGS_FILE_NAME);
                 if (!sdcard_mounted)
                     _hal->sdcard()->eject();
-#if HAL_USE_WIFI
-                UTILS::UI::show_progress(_hal, "WiFi", -1, "Stopping...");
-                delay(500);
-                _hal->wifi()->init();
-                if (getBool("wifi", "enabled"))
-                {
-                    UTILS::UI::show_progress(_hal, "WiFi", -1, "Starting...");
-                    delay(500);
-                    _hal->wifi()->connect();
-                }
-#endif
                 UTILS::UI::show_message_dialog(_hal, "Success", "Loaded from: " + SETTINGS_FILE_NAME, 0);
             }
             else
@@ -634,12 +387,10 @@ namespace SETTINGS
         };
 
         _metadata = {sys_group,
-                     lora_group,
-                     security_group,
                      nodeinfo_group,
-                     neighborinfo_group,
-                     position_group,
-                     devmetrics_group,
+                     lora_group,
+                     meshcore_group,
+                     security_group,
                      export_group,
                      import_group};
     }

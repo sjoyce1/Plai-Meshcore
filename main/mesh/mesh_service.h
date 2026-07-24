@@ -142,6 +142,11 @@ namespace Mesh
         uint8_t private_key[32];
         size_t public_key_len; // 0 = no key, 32 = valid
 
+        // MeshCore settings
+        uint32_t advert_interval = 30; // seconds
+        uint16_t sync_word = 18;       // 0x12
+        std::string primary_psk_b64;
+
         // Position configuration
         enum PositionMode
         {

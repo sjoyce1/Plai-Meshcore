@@ -301,6 +301,13 @@ namespace Mesh
                     if (fread(&entry.longitude_i, sizeof(entry.longitude_i), 1, file) != 1)
                         break;
 
+                    // Auto-correct legacy 1e6 coordinates from earlier builds
+                    if (abs(entry.latitude_i) > 0 && abs(entry.latitude_i) < 100000000)
+                    {
+                        entry.latitude_i *= 10;
+                        entry.longitude_i *= 10;
+                    }
+
                     // Verify file exists
                     std::string path = getNodeFilePath(entry.node_id);
                     struct stat st;
@@ -528,8 +535,15 @@ namespace Mesh
         entry.snr = node.info.snr;
         if (node.info.has_position && (node.info.position.latitude_i != 0 || node.info.position.longitude_i != 0))
         {
-            entry.latitude_i = node.info.position.latitude_i;
-            entry.longitude_i = node.info.position.longitude_i;
+            int32_t lat = node.info.position.latitude_i;
+            int32_t lon = node.info.position.longitude_i;
+            if (abs(lat) > 0 && abs(lat) < 100000000)
+            {
+                lat *= 10;
+                lon *= 10;
+            }
+            entry.latitude_i = lat;
+            entry.longitude_i = lon;
         }
         else
         {

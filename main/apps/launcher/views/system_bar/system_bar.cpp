@@ -75,6 +75,7 @@ void Launcher::_update_system_bar()
             _data.hal->canvas_system_bar()->fillRoundRect(x, y + 1, short_width, 14, 4, nc);
             _data.hal->canvas_system_bar()->setFont(FONT_12);
             _data.hal->canvas_system_bar()->setTextColor(ntc, nc);
+            _data.hal->canvas_system_bar()->drawCenterString(display_name.c_str(), x + short_width / 2, y + 1);
             x += short_width + PADDING_X + 2;
 
             // Render GPS indicator immediately to the right of the name pill

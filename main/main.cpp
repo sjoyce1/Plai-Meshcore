@@ -74,7 +74,7 @@ extern "C" void app_main(void)
             }
             else
             {
-                ESP_LOGI(TAG, "Meshtastic client ready");
+                ESP_LOGI(TAG, "MeshCore client ready");
             }
         }
     }

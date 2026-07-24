@@ -1,4 +1,4 @@
-# Plai-Meshcore (v0.72beta)
+# Plai-Meshcore (v0.73beta)
 
 Plai-Meshcore is a port of the beautiful **Plai** M5Stack Cardputer communicator application from Meshtastic to the lightweight, decentralized **MeshCore** networking stack. 
 

@@ -77,6 +77,43 @@ namespace SETTINGS
              "",
              "Timezone selection",
              [](SettingItem_t& item) { applyTimezone(item.value); }},
+            {"set_time",
+             "Set clock (HH:MM)...",
+             TYPE_CALLBACK,
+             "",
+             "",
+             "",
+             "",
+             "Manually set local clock time (24h format)",
+             [this](SettingItem_t& item)
+             {
+                 if (!_hal) return;
+                 std::string time_val = "12:00";
+                 if (UTILS::UI::show_edit_string_dialog(_hal, "Set Time (HH:MM)", time_val, false, 5))
+                 {
+                     int hh = 0, mm = 0;
+                     if (sscanf(time_val.c_str(), "%d:%d", &hh, &mm) == 2 && hh >= 0 && hh < 24 && mm >= 0 && mm < 60)
+                     {
+                         time_t now = time(nullptr);
+                         struct tm timeinfo;
+                         localtime_r(&now, &timeinfo);
+                         timeinfo.tm_hour = hh;
+                         timeinfo.tm_min = mm;
+                         timeinfo.tm_sec = 0;
+                         time_t new_time = mktime(&timeinfo);
+                         if (new_time != -1)
+                         {
+                             struct timeval tv = { .tv_sec = new_time, .tv_usec = 0 };
+                             settimeofday(&tv, nullptr);
+                             UTILS::UI::show_message_dialog(_hal, "Success", "Clock updated!", 1500);
+                         }
+                     }
+                     else
+                     {
+                         UTILS::UI::show_error_dialog(_hal, "Error", "Use 24h format HH:MM (e.g. 14:30)");
+                     }
+                 }
+             }},
             {"map_style",
              "Map style",
              TYPE_STRING,

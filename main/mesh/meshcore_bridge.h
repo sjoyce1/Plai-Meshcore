@@ -102,6 +102,11 @@ public:
         if (type == PAYLOAD_TYPE_TXT_MSG && len > 5) {
             uint32_t timestamp;
             memcpy(&timestamp, data, 4);
+            if (timestamp > 1700000000 && time(nullptr) < 1700000000) {
+                struct timeval tv = { .tv_sec = (time_t)timestamp, .tv_usec = 0 };
+                settimeofday(&tv, nullptr);
+                ESP_LOGI("BRIDGE", "Synced local clock from incoming DM packet: %u", (unsigned int)timestamp);
+            }
             uint8_t flags = data[4] >> 2;
             data[len] = 0; // null terminate
             
@@ -150,6 +155,11 @@ public:
         if (type == PAYLOAD_TYPE_GRP_TXT && len > 5 && (txt_type >> 2) == 0) {
             uint32_t timestamp;
             memcpy(&timestamp, data, 4);
+            if (timestamp > 1700000000 && time(nullptr) < 1700000000) {
+                struct timeval tv = { .tv_sec = (time_t)timestamp, .tv_usec = 0 };
+                settimeofday(&tv, nullptr);
+                ESP_LOGI("BRIDGE", "Synced local clock from incoming Mesh packet: %u", (unsigned int)timestamp);
+            }
             data[len] = 0; // null terminate
 
             const char* msg_text = (const char*)&data[5];

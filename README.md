@@ -8,7 +8,7 @@ This repository decouples the Plai UI from the heavy Meshtastic backend, tying t
 
 ## ⚡ Quick Web Flashing
 
-You can flash the pre-compiled firmware binary directly to your M5Stack Cardputer using a Web Serial flasher in Google Chrome, Microsoft Edge, or Brave:
+You can flash the firmaware in M5Burner or you can flash the pre-compiled firmware binary directly to your M5Stack Cardputer using a Web Serial flasher in Google Chrome, Microsoft Edge, or Brave:
 
 1. Download the latest pre-compiled **`plai-meshcore.bin`** firmware file from the [Latest GitHub Release](https://github.com/sjoyce1/Plai-Meshcore/releases/latest).
 2. Connect your **M5Stack Cardputer** to your computer via USB-C.

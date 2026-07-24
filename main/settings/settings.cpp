@@ -381,6 +381,76 @@ namespace SETTINGS
              }},
         };
 
+        // GPS settings
+        SettingGroup_t gps_group;
+        gps_group.name = "GPS config";
+        gps_group.nvs_namespace = "gps";
+        gps_group.items = {
+            back_item,
+            {"enabled",
+             "GPS Enabled",
+             TYPE_BOOL,
+             "true",
+             "true",
+             "",
+             "",
+             "Enable/disable ATGM336H GPS UART driver",
+             [this](SettingItem_t& item)
+             {
+                 bool en = (item.value == "true");
+                 if (_hal && _hal->gps())
+                 {
+                     if (en)
+                         _hal->gps()->init();
+                     else
+                         _hal->gps()->deinit();
+                 }
+             }},
+            {"sync_gps_time",
+             "Sync time from GPS now...",
+             TYPE_CALLBACK,
+             "",
+             "",
+             "",
+             "",
+             "Query GPS fix and sync system clock with satellite time",
+             [this](SettingItem_t& item)
+             {
+                 if (!_hal) return;
+                 if (!_hal->gps() || !_hal->gps()->isInitialized())
+                 {
+                     UTILS::UI::show_error_dialog(_hal, "GPS Disabled", "GPS module is turned off in settings.", "OK");
+                     return;
+                 }
+                 auto data = _hal->gps()->getData();
+                 if (!data.has_fix)
+                 {
+                     std::string msg = "Searching for satellites...\nSats in view: " + std::to_string(data.sats_in_view) + "\nSentences: " + std::to_string(data.sentence_count);
+                     UTILS::UI::show_error_dialog(_hal, "No GPS Fix", msg.c_str(), "OK");
+                     return;
+                 }
+                 if (data.time > 1700000000)
+                 {
+                     struct timeval tv = { .tv_sec = (time_t)data.time, .tv_usec = 0 };
+                     settimeofday(&tv, nullptr);
+                     _hal->setGPSAdjusted(true);
+
+                     time_t now = time(nullptr);
+                     struct tm timeinfo;
+                     localtime_r(&now, &timeinfo);
+                     char time_buf[32];
+                     strftime(time_buf, sizeof(time_buf), "%H:%M:%S", &timeinfo);
+
+                     std::string success_msg = "Clock synced to GPS!\nTime: " + std::string(time_buf) + "\nSats used: " + std::to_string(data.sats_used);
+                     UTILS::UI::show_message_dialog(_hal, "GPS Time Synced", success_msg, 3000);
+                 }
+                 else
+                 {
+                     UTILS::UI::show_error_dialog(_hal, "Time Not Ready", "GPS fix acquired but satellite date/time is not valid yet.", "OK");
+                 }
+             }},
+        };
+
         SettingGroup_t export_group;
         export_group.name = "Export (SD card)";
         export_group.items = {};
@@ -428,6 +498,7 @@ namespace SETTINGS
                      lora_group,
                      meshcore_group,
                      security_group,
+                     gps_group,
                      export_group,
                      import_group};
     }

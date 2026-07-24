@@ -395,14 +395,16 @@ void HalCardputer::_init_radio()
 #if HAL_USE_GPS
 void HalCardputer::_init_gps()
 {
-    ESP_LOGI(TAG, "init gps");
+    bool enabled = _settings->getBool("gps", "enabled");
+    ESP_LOGI(TAG, "init gps (enabled=%d)", enabled);
 
     _gps = new GPS(Gps::PIN_RX, Gps::PIN_TX, Gps::UART_NUM, Gps::BAUD_RATE);
-    if (!_gps->init())
+    if (enabled)
     {
-        ESP_LOGE(TAG, "Failed to initialize GPS");
-        delete _gps;
-        _gps = nullptr;
+        if (!_gps->init())
+        {
+            ESP_LOGE(TAG, "Failed to initialize GPS module on UART");
+        }
     }
 }
 #endif

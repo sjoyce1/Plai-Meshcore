@@ -90,20 +90,35 @@ void Launcher::_update_system_bar()
             _data.hal->canvas_system_bar()->setFont(FONT_12);
         }
         _data.hal->canvas_system_bar()->setFont(FONT_16);
-        // Time
+        // Time & GPS Status Indicator
         bool show_time = _data.hal->settings()->getBool("system", "show_time");
         if (show_time)
         {
-            if (_data.hal->isGPSAdjusted())
+#if HAL_USE_GPS
+            bool gps_enabled = _data.hal->settings()->getBool("gps", "enabled");
+            if (gps_enabled && _data.hal->gps())
             {
-                // show gps icon before the text
-                _data.hal->canvas_system_bar()->pushImage(_data.hal->canvas_system_bar()->width() / 2 - 8 - 33,
-                                                          y + 2,
-                                                          12,
-                                                          12,
-                                                          image_data_pos_external,
-                                                          TFT_WHITE);
+                int icon_x = _data.hal->canvas_system_bar()->width() / 2 - 8 - 36;
+                if (_data.hal->gps()->hasFix())
+                {
+                    // Fix acquired: Green satellite icon + sat count
+                    _data.hal->canvas_system_bar()->pushImage(icon_x, y + 2, 12, 12, image_data_pos_external, TFT_GREEN);
+                    auto data = _data.hal->gps()->getData();
+                    _data.hal->canvas_system_bar()->setFont(FONT_6);
+                    _data.hal->canvas_system_bar()->setTextColor(TFT_GREEN, THEME_COLOR_SYSTEM_BAR);
+                    _data.hal->canvas_system_bar()->drawString(std::format("{}", data.sats_used).c_str(), icon_x + 13, y + 4);
+                }
+                else if (_data.hal->gps()->isInitialized())
+                {
+                    // Searching for satellites: Yellow satellite icon + ?
+                    _data.hal->canvas_system_bar()->pushImage(icon_x, y + 2, 12, 12, image_data_pos_external, TFT_YELLOW);
+                    _data.hal->canvas_system_bar()->setFont(FONT_6);
+                    _data.hal->canvas_system_bar()->setTextColor(TFT_YELLOW, THEME_COLOR_SYSTEM_BAR);
+                    _data.hal->canvas_system_bar()->drawString("?", icon_x + 13, y + 4);
+                }
             }
+#endif
+            _data.hal->canvas_system_bar()->setFont(FONT_16);
             _data.hal->canvas_system_bar()->setTextColor(THEME_COLOR_SYSTEM_BAR_TEXT);
             _data.hal->canvas_system_bar()->drawCenterString(_data.system_state.time.c_str(),
                                                              _data.hal->canvas_system_bar()->width() / 2 - 8,

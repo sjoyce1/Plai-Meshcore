@@ -30,7 +30,7 @@ namespace MOONCAKE::APPS
     class AppStats : public APP_BASE
     {
     private:
-        static constexpr int TAB_COUNT = 7;
+        static constexpr int TAB_COUNT = 6;
         static constexpr int MAX_TASKS = 16;
 
         enum Tab
@@ -40,7 +40,6 @@ namespace MOONCAKE::APPS
             TAB_RADIO,
             TAB_NODEDB,
             TAB_GPS,
-            TAB_MESH,
             TAB_TASKS
         };
 
@@ -77,14 +76,12 @@ namespace MOONCAKE::APPS
         void _render_radio_info();
         void _render_nodedb_info();
         void _render_gps_info();
-        void _render_mesh_info();
         void _render_tasks_info();
         void _handle_input();
         void _add_row(const char* label, const char* value, int color = TFT_CYAN);
         void _draw_row(int y, const char* label, const char* value, int value_color = TFT_CYAN);
         std::string _format_uptime(uint32_t ms);
         static const char* _preset_name(int preset);
-        static const char* _port_name(uint8_t port);
 
     public:
         void onCreate() override;

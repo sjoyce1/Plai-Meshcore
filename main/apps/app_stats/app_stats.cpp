@@ -39,7 +39,7 @@ static const char* TAG __attribute__((unused)) = "APP_STATS";
 #define BODY_START_Y 15
 #define ICON_SIZE 12
 
-static const char* TAB_NAMES[] = {"NODE", "SYSTEM", "RADIO", "NODE DB", "GPS", "MESH", "TASKS"};
+static const char* TAB_NAMES[] = {"NODE", "SYSTEM", "RADIO", "NODE DB", "GPS", "TASKS"};
 
 static const char* HINT_STATS = "[\u2191][\u2193][\u2190][\u2192] [DEL] [ESC]";
 
@@ -128,9 +128,6 @@ void AppStats::_render_tab()
     case TAB_GPS:
         _render_gps_info();
         break;
-    case TAB_MESH:
-        _render_mesh_info();
-        break;
     case TAB_TASKS:
         _render_tasks_info();
         break;
@@ -180,7 +177,6 @@ void AppStats::_render_tab_header(const char* title)
                                image_data_stat_radio,
                                image_data_stat_db,
                                image_data_stat_gps,
-                               image_data_stat_mesh,
                                image_data_stat_tasks};
     if (_data.current_tab < TAB_COUNT)
     {
@@ -232,9 +228,7 @@ void AppStats::_render_node_info()
     const auto& config = _data.hal->mesh()->getConfig();
     char buf[48];
 
-    snprintf(buf, sizeof(buf), "!%08lx", config.node_id);
-    _add_row("Node ID", buf, TFT_CYAN);
-    _add_row("Long Name", config.long_name, TFT_GREEN);
+    _add_row("Name", config.long_name, TFT_GREEN);
     _add_row("Short Name", config.short_name, TFT_GREEN);
     _add_row("Role", Mesh::NodeDB::getRoleName(config.role), TFT_YELLOW);
     _add_row("PKI", config.public_key_len == 32 ? "Enabled" : "None", config.public_key_len == 32 ? TFT_GREEN : TFT_DARKGREY);
@@ -362,7 +356,16 @@ void AppStats::_render_radio_info()
 
     const auto& mesh_config = _data.hal->mesh()->getConfig();
 
-    float freq = _data.hal->mesh()->getFrequency();
+    float freq = 0.0f;
+    if (_data.hal->radio())
+    {
+        freq = (float)_data.hal->radio()->getConfig().frequency_hz / 1000000.0f;
+    }
+    if (freq <= 0.0f)
+    {
+        int32_t freq_khz = _data.hal->settings()->getNumber("lora", "frequency");
+        freq = (freq_khz > 0) ? (float)freq_khz / 1000.0f : 910.525f;
+    }
     snprintf(buf, sizeof(buf), "%.3f MHz", freq);
     _add_row("Freq", buf, TFT_CYAN);
 
@@ -493,135 +496,6 @@ void AppStats::_render_gps_info()
 #else
     _add_row("GPS", "Not supported", TFT_DARKGREY);
 #endif
-}
-
-// ========== Tab: Mesh Port Distribution ==========
-
-const char* AppStats::_port_name(uint8_t port)
-{
-    switch (port)
-    {
-    case meshtastic_PortNum_TEXT_MESSAGE_APP:
-        return "Text";
-    case meshtastic_PortNum_POSITION_APP:
-        return "Position";
-    case meshtastic_PortNum_NODEINFO_APP:
-        return "NodeInfo";
-    case meshtastic_PortNum_TELEMETRY_APP:
-        return "Telemetry";
-    case meshtastic_PortNum_ROUTING_APP:
-        return "Routing";
-    case meshtastic_PortNum_ADMIN_APP:
-        return "Admin";
-    case meshtastic_PortNum_TRACEROUTE_APP:
-        return "Traceroute";
-    case meshtastic_PortNum_WAYPOINT_APP:
-        return "Waypoint";
-    case meshtastic_PortNum_NEIGHBORINFO_APP:
-        return "Neighbor";
-    case meshtastic_PortNum_STORE_FORWARD_APP:
-        return "Store&Fwd";
-    case meshtastic_PortNum_RANGE_TEST_APP:
-        return "RangeTest";
-    case meshtastic_PortNum_MAP_REPORT_APP:
-        return "MapReport";
-    case meshtastic_PortNum_DETECTION_SENSOR_APP:
-        return "Sensor";
-    case meshtastic_PortNum_REMOTE_HARDWARE_APP:
-        return "RemoteHW";
-    case meshtastic_PortNum_ATAK_PLUGIN:
-        return "ATAK";
-    case meshtastic_PortNum_SERIAL_APP:
-        return "Serial";
-    case meshtastic_PortNum_PAXCOUNTER_APP:
-        return "PaxCount";
-    case meshtastic_PortNum_TEXT_MESSAGE_COMPRESSED_APP:
-        return "TextComp";
-    case meshtastic_PortNum_AUDIO_APP:
-        return "Audio";
-    case meshtastic_PortNum_REPLY_APP:
-        return "Reply";
-    case meshtastic_PortNum_IP_TUNNEL_APP:
-        return "IPTunnel";
-    case meshtastic_PortNum_STORE_FORWARD_PLUSPLUS_APP:
-        return "S&F++";
-    case meshtastic_PortNum_SIMULATOR_APP:
-        return "Simulator";
-    case meshtastic_PortNum_POWERSTRESS_APP:
-        return "PwrStress";
-    case meshtastic_PortNum_UNKNOWN_APP:
-        return "Unknown";
-    default:
-        return nullptr;
-    }
-}
-
-void AppStats::_render_mesh_info()
-{
-    const auto& pd = Mesh::MeshDataStore::getInstance().getPortDistribution();
-    const auto& stats = Mesh::MeshDataStore::getInstance().getStats();
-
-    if (pd.rx_total == 0 && stats.tx_packets == 0)
-    {
-        _add_row("Packets", "No data", TFT_DARKGREY);
-        return;
-    }
-
-    struct SortEntry
-    {
-        uint8_t port;
-        bool is_crc;
-        uint32_t count;
-    };
-
-    SortEntry sorted[Mesh::PORT_STATS_MAX + 1];
-    int sorted_count = 0;
-
-    for (int i = 0; i < pd.count && sorted_count < Mesh::PORT_STATS_MAX; i++)
-        sorted[sorted_count++] = {pd.entries[i].port, false, pd.entries[i].rx_count};
-    if (pd.crc_errors > 0 && sorted_count < Mesh::PORT_STATS_MAX + 1)
-        sorted[sorted_count++] = {0, true, pd.crc_errors};
-
-    std::sort(sorted, sorted + sorted_count, [](const SortEntry& a, const SortEntry& b) { return a.count > b.count; });
-
-    char buf[32];
-    snprintf(buf, sizeof(buf), "RX:%lu TX:%lu", (unsigned long)pd.rx_total, (unsigned long)stats.tx_packets);
-    _add_row("Total", buf, TFT_ORANGE);
-
-    for (int i = 0; i < sorted_count; i++)
-    {
-        const char* name;
-        char name_buf[16];
-        if (sorted[i].is_crc)
-        {
-            name = "CRC Error";
-        }
-        else
-        {
-            name = _port_name(sorted[i].port);
-            if (!name)
-            {
-                snprintf(name_buf, sizeof(name_buf), "Port %d", sorted[i].port);
-                name = name_buf;
-            }
-        }
-
-        float pct = pd.rx_total > 0 ? (sorted[i].count * 100.0f / pd.rx_total) : 0;
-        char val[24];
-        snprintf(val, sizeof(val), "%lu (%.1f%%)", (unsigned long)sorted[i].count, pct);
-
-        int color;
-        if (sorted[i].is_crc)
-            color = TFT_RED;
-        else if (pct > 30.0f)
-            color = TFT_GREEN;
-        else if (pct > 10.0f)
-            color = TFT_CYAN;
-        else
-            color = TFT_DARKGREY;
-
-        _add_row(name, val, color);
-    }
 }
 
 // ========== Tab: FreeRTOS Tasks ==========

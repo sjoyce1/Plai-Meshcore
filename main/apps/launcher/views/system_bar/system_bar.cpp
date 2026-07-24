@@ -20,11 +20,6 @@
 
 using namespace MOONCAKE::APPS;
 
-static const char* getModemPresetShortName(meshtastic_Config_LoRaConfig_ModemPreset preset)
-{
-    return Mesh::getPresetShortName(preset);
-}
-
 #define PADDING_X 4
 
 void Launcher::_start_system_bar() {}
@@ -77,29 +72,11 @@ void Launcher::_update_system_bar()
             uint32_t ntc = UTILS::UI::node_text_color(config.node_id);
 
             int short_width = display_name.length() * 6 + 6;
-            _data.hal->canvas_system_bar()->fillRoundRect(x, y + 1, short_width + 30 + PADDING_X, 14, 4, nc);
+            _data.hal->canvas_system_bar()->fillRoundRect(x, y + 1, short_width, 14, 4, nc);
             _data.hal->canvas_system_bar()->setFont(FONT_12);
             _data.hal->canvas_system_bar()->setTextColor(ntc, nc);
             _data.hal->canvas_system_bar()->drawCenterString(display_name.c_str(), x + short_width / 2, y + 1);
-            x += short_width + PADDING_X;
-
-            // Mesh frequency and modem preset
-            float freq = _data.hal->mesh()->getFrequency();
-
-            _data.hal->canvas_system_bar()->setFont(FONT_6);
-
-            // Top line: frequency
-            if (freq > 0)
-            {
-                _data.hal->canvas_system_bar()->drawString(std::format("{:07.3f}", freq).c_str(), x, y + 2);
-            }
-
-            // Bottom line: preset short name, or "Cust" for a custom (manual) modem config
-            const char* preset_name =
-                config.lora_config.use_preset ? getModemPresetShortName(config.lora_config.modem_preset) : "Cust";
-            _data.hal->canvas_system_bar()->drawCenterString(preset_name, x + 15, y + 8);
-
-            x += 30 + PADDING_X;
+            x += short_width + PADDING_X + 2;
 
             // Channel utilization / Air utilization TX (2 lines, FONT_6)
             float ch_util = _data.hal->mesh()->getChannelUtilization();

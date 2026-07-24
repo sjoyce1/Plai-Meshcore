@@ -69,13 +69,13 @@ namespace SETTINGS
             {"timezone",
              "Timezone",
              TYPE_STRING,
-             "GMT+2",
-             "GMT+2",
-             "GMT-12;GMT-11;GMT-10;GMT-9:30;GMT-9;GMT-8;GMT-7;GMT-6;GMT-5;GMT-4;GMT-3:30;GMT-3;GMT-2;GMT-1;"
+             "US-Central",
+             "US-Central",
+             "US-Central;US-Eastern;US-Mountain;US-Pacific;GMT-12;GMT-11;GMT-10;GMT-9:30;GMT-9;GMT-8;GMT-7;GMT-6;GMT-5;GMT-4;GMT-3:30;GMT-3;GMT-2;GMT-1;"
              "GMT+0;GMT+1;GMT+2;GMT+3;GMT+3:30;GMT+4;GMT+4:30;GMT+5;GMT+5:30;GMT+5:45;"
              "GMT+6;GMT+6:30;GMT+7;GMT+8;GMT+8:45;GMT+9;GMT+9:30;GMT+10;GMT+10:30;GMT+11;GMT+12;GMT+13;GMT+14",
              "",
-             "Timezone offset from GMT",
+             "Timezone selection",
              [](SettingItem_t& item) { applyTimezone(item.value); }},
             {"map_style",
              "Map style",
@@ -403,6 +403,10 @@ namespace SETTINGS
             const char* label;
             const char* posix;
         } tz_table[] = {
+            {"US-Central", "CST6CDT,M3.2.0,M11.1.0"},
+            {"US-Eastern", "EST5EDT,M3.2.0,M11.1.0"},
+            {"US-Mountain", "MST7MDT,M3.2.0,M11.1.0"},
+            {"US-Pacific", "PST8PDT,M3.2.0,M11.1.0"},
             {"GMT-12", "<GMT-12>12"},        {"GMT-11", "<GMT-11>11"},        {"GMT-10", "<GMT-10>10"},
             {"GMT-9:30", "<GMT-9:30>9:30"},  {"GMT-9", "<GMT-9>9"},           {"GMT-8", "<GMT-8>8"},
             {"GMT-7", "<GMT-7>7"},           {"GMT-6", "<GMT-6>6"},           {"GMT-5", "<GMT-5>5"},

@@ -207,8 +207,8 @@ namespace MOONCAKE::APPS
 
     class AppNodes_Packer : public APP_PACKER_BASE
     {
-        std::string getAppName() override { return "NODES"; }
-        std::string getAppDesc() override { return "Mesh network nodes"; }
+        std::string getAppName() override { return "CONTACTS"; }
+        std::string getAppDesc() override { return "Mesh contacts & DMs"; }
         void* getAppIcon() override { return (void*)(new AppIcon_t(image_data_app_nodes, nullptr)); }
         void* newApp() override { return new AppNodes; }
         void deleteApp(void* app) override { delete (AppNodes*)app; }

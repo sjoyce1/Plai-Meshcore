@@ -1039,15 +1039,11 @@ namespace Mesh
             full_node.relay_node = relay_node;
         }
 
-        if (saveNodeToFile(full_node))
-        {
-            updateIndexEntry(full_node);
-            markDirty();
-            ESP_LOGD(TAG, "%s node 0x%08lX", exists ? "Updated" : "Added", (unsigned long)node.num);
-            return true;
-        }
-
-        return false;
+        bool saved = saveNodeToFile(full_node);
+        updateIndexEntry(full_node);
+        markDirty();
+        ESP_LOGI(TAG, "%s node 0x%08lX (saved=%d)", exists ? "Updated" : "Added", (unsigned long)node.num, (int)saved);
+        return true;
     }
 
     bool NodeDB::removeNode(uint32_t node_id)

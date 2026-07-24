@@ -98,6 +98,7 @@ public:
 
     // Handle incoming direct message
     void onPeerDataRecv(Packet* packet, uint8_t type, int sender_idx, const uint8_t* secret, uint8_t* data, size_t len) override {
+        ESP_LOGI("BRIDGE", "onPeerDataRecv: type=%d, sender_idx=%d, len=%d", (int)type, sender_idx, (int)len);
         if (type == PAYLOAD_TYPE_TXT_MSG && len > 5) {
             uint32_t timestamp;
             memcpy(&timestamp, data, 4);
@@ -106,14 +107,40 @@ public:
             
             if (flags == 0) { // Plain text message
                 uint32_t sender_id = 0;
+                const uint8_t* sender_pubkey = nullptr;
+                ::Mesh::NodeInfo node;
                 if (sender_idx >= 0 && sender_idx < (int)_matching_node_ids.size()) {
                     sender_id = _matching_node_ids[sender_idx];
+                    if (_nodedb && _nodedb->getNode(sender_id, node)) {
+                        if (node.info.has_user && node.info.user.public_key.size == 32) {
+                            sender_pubkey = node.info.user.public_key.bytes;
+                        }
+                    }
                 }
+                uint32_t my_node_id = _nodedb ? _nodedb->getOurNodeId() : 0;
+                ESP_LOGI("BRIDGE", "Received DM from node 0x%08X: '%s'", (unsigned int)sender_id, (const char*)&data[5]);
                 if (_on_msg_recv_cb) {
-                    _on_msg_recv_cb(sender_id, _nodedb ? _nodedb->getLocalConfig().device.role : 0, timestamp, (const char*)&data[5], false, 0);
+                    _on_msg_recv_cb(sender_id, my_node_id, timestamp, (const char*)&data[5], false, 0);
+                }
+
+                if (sender_pubkey) {
+                    // Calculate & transmit MeshCore ACK back to sender to stop retries: SHA256(data[0..5+text_len] + sender_pubkey[0..32])
+                    uint32_t ack_hash = 0;
+                    size_t msg_data_len = 5 + strlen((const char*)&data[5]);
+                    Utils::sha256((uint8_t*)&ack_hash, 4, data, msg_data_len, sender_pubkey, PUB_KEY_SIZE);
+
+                    Packet* ack = createAck(ack_hash);
+                    if (ack) {
+                        sendFlood(ack);
+                        ESP_LOGI("BRIDGE", "Sent ACK back to node 0x%08X (ack_hash=0x%08X)", (unsigned int)sender_id, (unsigned int)ack_hash);
+                    }
                 }
             }
         }
+    }
+
+    void onAckRecv(Packet* packet, uint32_t ack_crc) override {
+        ESP_LOGI("BRIDGE", "onAckRecv: received ACK crc 0x%08X", (unsigned int)ack_crc);
     }
 
     // Handle incoming group channel message
@@ -144,6 +171,24 @@ public:
                         break;
                     }
                 }
+
+                if (sender_id == 0 && !sender_name.empty()) {
+                    uint8_t hash[32];
+                    Utils::sha256(hash, 32, (const uint8_t*)sender_name.c_str(), sender_name.length());
+                    memcpy(&sender_id, hash, 4);
+
+                    meshtastic_NodeInfo node_info = meshtastic_NodeInfo_init_default;
+                    node_info.num = sender_id;
+                    node_info.has_user = true;
+                    strncpy(node_info.user.long_name, sender_name.c_str(), sizeof(node_info.user.long_name) - 1);
+                    strncpy(node_info.user.short_name, sender_name.c_str(), 4);
+                    node_info.user.short_name[4] = 0;
+                    node_info.snr = packet->getSNR();
+                    node_info.last_heard = timestamp;
+
+                    _nodedb->updateNode(node_info, packet->_snr, packet->getSNR(), packet->path_len > 0 ? packet->path[0] : 0);
+                    ESP_LOGI("BRIDGE", "Auto-created NodeDB contact for node 0x%08X: '%s'", (unsigned int)sender_id, sender_name.c_str());
+                }
             }
 
             uint8_t channel_idx = 0;
@@ -170,11 +215,22 @@ public:
     // Handle new node advertisement
     void onAdvertRecv(Packet* packet, const Identity& id, uint32_t timestamp, const uint8_t* app_data, size_t app_data_len) override {
         AdvertDataParser parser(app_data, app_data_len);
+        ESP_LOGI("BRIDGE", "onAdvertRecv: valid=%d, hasName=%d, name='%s'", parser.isValid(), parser.hasName(), parser.getName());
         if (parser.isValid() && parser.hasName()) {
             uint32_t node_id = 0;
             memcpy(&node_id, id.pub_key, 4);
 
             if (_nodedb) {
+                // If there's an auto-created synthetic node with matching name, remove it so real node entry replaces it
+                const auto& index = _nodedb->getIndex();
+                for (const auto& entry : index) {
+                    if (entry.node_id != node_id && (strcmp(entry.long_name, parser.getName()) == 0 || strcmp(entry.short_name, parser.getName()) == 0)) {
+                        _nodedb->removeNode(entry.node_id);
+                        ESP_LOGI("BRIDGE", "Removed synthetic node entry 0x%08X in favor of real advert 0x%08X", (unsigned int)entry.node_id, (unsigned int)node_id);
+                        break;
+                    }
+                }
+
                 meshtastic_NodeInfo node_info = meshtastic_NodeInfo_init_default;
                 node_info.num = node_id;
                 node_info.has_user = true;
@@ -194,6 +250,7 @@ public:
                 node_info.last_heard = timestamp;
 
                 _nodedb->updateNode(node_info, packet->_snr, packet->getSNR(), packet->path_len > 0 ? packet->path[0] : 0);
+                ESP_LOGI("BRIDGE", "Updated NodeDB entry for node 0x%08X: '%s' (32-byte public key saved)", (unsigned int)node_id, parser.getName());
             }
         }
     }
@@ -214,9 +271,11 @@ public:
         Identity dest_identity(dest_pubkey);
         auto pkt = createDatagram(PAYLOAD_TYPE_TXT_MSG, dest_identity, secret, temp, 5 + text_len);
         if (pkt) {
+            ESP_LOGI("BRIDGE", "sendMessage: sending DM to 0x%08X (dest_hash=0x%02X): '%s'", (unsigned int)dest_id, dest_pubkey[0], text);
             sendFlood(pkt);
             return true;
         }
+        ESP_LOGE("BRIDGE", "sendMessage: failed to create datagram packet for 0x%08X", (unsigned int)dest_id);
         return false;
     }
 

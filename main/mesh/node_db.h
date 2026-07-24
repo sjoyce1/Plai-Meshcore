@@ -131,6 +131,7 @@ namespace Mesh
          * @return true on success
          */
         bool init(uint32_t our_node_id);
+        uint32_t getOurNodeId() const { return _our_node_id; }
 
         /**
          * @brief Load database from SD card

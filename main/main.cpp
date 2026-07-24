@@ -31,8 +31,13 @@ void _data_base_setup_callback(SIMPLEKV::SimpleKV& db)
     db.Add<SETTINGS::Settings*>("SETTINGS", &settings);
 }
 
+#include "mesh/console_logger.h"
+
 extern "C" void app_main(void)
 {
+    // Start capturing console logs for the Live Console Monitor app
+    Mesh::ConsoleLogger::getInstance().init();
+
     // Settings init
     settings.init();
     settings.setHal(&hal);
@@ -49,18 +54,12 @@ extern "C" void app_main(void)
     auto launcher = new APPS::Launcher_Packer;
     mooncake.installApp(launcher);
 
-    // Install apps - Settings first
-    mooncake.installApp(new APPS::AppSettings_Packer);
-    // mooncake.installApp(new APPS::AppDevices_Packer);
-
-    // Install Meshtastic widgets
+    // Install apps: Contacts, Channels, Monitor, Stats, Settings
     mooncake.installApp(new APPS::AppNodes_Packer);
     mooncake.installApp(new APPS::AppChannels_Packer);
     mooncake.installApp(new APPS::AppMonitor_Packer);
     mooncake.installApp(new APPS::AppStats_Packer);
-#if 0
-    mooncake.installApp(new APPS::AppGraphs_Packer);
-#endif
+    mooncake.installApp(new APPS::AppSettings_Packer);
 
     // Mount SD card if available
     if (hal.sdcard())

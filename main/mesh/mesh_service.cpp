@@ -127,6 +127,15 @@ namespace Mesh
         _bridge = new mesh::MeshCoreBridge(radio, nodedb);
         _bridge->self_id.readFromSeed(_config.private_key);
 
+        if (_config.long_name[0] == '\0')
+        {
+            snprintf(_config.long_name, sizeof(_config.long_name), "Cardputer-%04X", (unsigned int)(getNodeId() & 0xFFFF));
+        }
+        if (_config.short_name[0] == '\0')
+        {
+            snprintf(_config.short_name, sizeof(_config.short_name), "%04X", (unsigned int)(getNodeId() & 0xFFFF));
+        }
+
         _bridge->setOnMessageReceived([this](uint32_t sender_id, uint32_t dest_id, uint32_t timestamp, const char* text, bool is_group, uint8_t channel) {
             Mesh::TextMessage msg;
             msg.id = esp_random();
@@ -161,6 +170,8 @@ namespace Mesh
         {
             _bridge->begin();
             _radio->startReceive(0);
+            ESP_LOGI(TAG, "Broadcasting self advert on startup");
+            sendNodeInfo(0xFFFFFFFF, 0, false);
         }
         return true;
     }
@@ -174,6 +185,19 @@ namespace Mesh
         if (_bridge)
         {
             _bridge->loop();
+
+            static uint32_t last_advert_ts = 0;
+            uint32_t now = esp_timer_get_time() / 1000000;
+            if (last_advert_ts == 0)
+            {
+                last_advert_ts = now;
+            }
+            else if (now - last_advert_ts >= 30) // Broadcast advert every 30 seconds for fast discovery
+            {
+                last_advert_ts = now;
+                ESP_LOGI(TAG, "Broadcasting periodic self advert");
+                sendNodeInfo(0xFFFFFFFF, 0, false);
+            }
         }
     }
 
@@ -211,6 +235,16 @@ namespace Mesh
                 {
                     success = _bridge->sendMessage(dest, dest_node.info.user.public_key.bytes, text);
                 }
+                else
+                {
+                    ESP_LOGW(TAG, "Cannot send DM to node 0x%08X: missing 32-byte public key (size=%d). Triggering self-advert broadcast to initiate key exchange.", (unsigned int)dest, dest_node.info.user.public_key.size);
+                    sendNodeInfo(0xFFFFFFFF, 0, false);
+                }
+            }
+            else
+            {
+                ESP_LOGW(TAG, "Cannot send DM: node 0x%08X not found in NodeDB. Triggering self-advert broadcast.", (unsigned int)dest);
+                sendNodeInfo(0xFFFFFFFF, 0, false);
             }
         }
 
@@ -302,10 +336,21 @@ namespace Mesh
     {
         if (_bridge)
         {
-            auto pkt = _bridge->createSelfAdvert(_config.long_name);
+            const char* name = _config.long_name[0] != '\0' ? _config.long_name : _config.short_name;
+            if (!name || name[0] == '\0')
+            {
+                name = "Cardputer";
+            }
+            ESP_LOGI(TAG, "sendNodeInfo: creating advert for '%s'", name);
+            auto pkt = _bridge->createSelfAdvert(name);
             if (pkt)
             {
                 _bridge->sendFlood(pkt);
+                ESP_LOGI(TAG, "Self advert broadcast sent!");
+            }
+            else
+            {
+                ESP_LOGE(TAG, "Failed to create self advert packet");
             }
         }
     }

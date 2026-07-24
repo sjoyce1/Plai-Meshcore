@@ -6,7 +6,8 @@
 cmake_minimum_required(VERSION 3.16)
 
 file (STRINGS version.txt BUILD_NUMBER)
-set(PROJECT_VER ${BUILD_NUMBER})
+set(PROJECT_VER "${BUILD_NUMBER}")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/version.txt")
 add_compile_options(-Wno-missing-field-initializers)
 add_compile_definitions(BUILD_NUMBER="${BUILD_NUMBER}")
 

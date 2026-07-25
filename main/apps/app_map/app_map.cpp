@@ -135,6 +135,8 @@ void AppMap::onResume()
 {
     _data.hal->canvas()->fillScreen(TFT_BLACK);
     _init_map_center();
+    _render_map_view();
+    _data.hal->canvas_update();
 }
 
 void AppMap::_init_map_center()
@@ -279,6 +281,7 @@ bool AppMap::_render_map_view()
     canvas->setTextColor(TFT_DARKGREY, TFT_BLACK);
     canvas->drawString("Arrows:Pan  , / .:Zoom  N:Next  C:Center  ESC:Exit", 2, canvas->height() - 8);
 
+    _data.hal->canvas_update();
     return true;
 }
 

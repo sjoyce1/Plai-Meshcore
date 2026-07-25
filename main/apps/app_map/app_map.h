@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "apps/app_graphs/assets/app_graphs.h"
+#include "assets/app_map.h"
 
 namespace MOONCAKE::APPS
 {
@@ -45,7 +45,7 @@ namespace MOONCAKE::APPS
     {
         std::string getAppName() override { return "MAP"; }
         std::string getAppDesc() override { return "Interactive map & nodes"; }
-        void* getAppIcon() override { return (void*)(new AppIcon_t(image_data_app_graphs, nullptr)); }
+        void* getAppIcon() override { return (void*)(new AppIcon_t(image_data_app_map, nullptr)); }
         void* newApp() override { return new AppMap; }
         void deleteApp(void* app) override { delete (AppMap*)app; }
     };

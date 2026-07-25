@@ -15,6 +15,7 @@
 // Meshtastic widgets
 #include "app_nodes/app_nodes.h"
 #include "app_channels/app_channels.h"
+#include "app_map/app_map.h"
 #include "app_monitor/app_monitor.h"
 #include "app_stats/app_stats.h"
 #include "app_graphs/app_graphs.h"

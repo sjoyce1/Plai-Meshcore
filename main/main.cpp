@@ -54,9 +54,10 @@ extern "C" void app_main(void)
     auto launcher = new APPS::Launcher_Packer;
     mooncake.installApp(launcher);
 
-    // Install apps: Contacts, Channels, Monitor, Stats, Settings
+    // Install apps: Contacts, Channels, Map, Monitor, Stats, Settings
     mooncake.installApp(new APPS::AppNodes_Packer);
     mooncake.installApp(new APPS::AppChannels_Packer);
+    mooncake.installApp(new APPS::AppMap_Packer);
     mooncake.installApp(new APPS::AppMonitor_Packer);
     mooncake.installApp(new APPS::AppStats_Packer);
     mooncake.installApp(new APPS::AppSettings_Packer);

@@ -1,3 +1,4 @@
+# Main CMakeLists.txt for Plai-Meshcore
 file(GLOB_RECURSE APPS_SRCS
     apps/*.c
     apps/*.cpp

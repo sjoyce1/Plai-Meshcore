@@ -160,7 +160,8 @@ public:
                 // Icon
                 if (item->userData != nullptr)
                 {
-                    if (((AppIcon_t*)(item->userData))->iconSmall == nullptr)
+                    auto* icon_ptr = (AppIcon_t*)(item->userData);
+                    if (icon_ptr->iconSmall == nullptr && icon_ptr->iconBig != nullptr)
                     {
                         // no small image, render with resize to 40x40 from big image
                         _hal->canvas()->pushImageRotateZoom((float)(item->x + x_offset + 4),
@@ -172,7 +173,7 @@ public:
                                                             0.7,
                                                             56,
                                                             56,
-                                                            ((AppIcon_t*)(item->userData))->iconBig,
+                                                            icon_ptr->iconBig,
                                                             (int)0x8631);
                     }
                     else

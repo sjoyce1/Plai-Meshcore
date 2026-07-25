@@ -6,14 +6,16 @@ This repository decouples the Plai UI from the heavy Meshtastic backend, tying t
 
 ---
 
-## ⚡ Quick Web Flashing
+## ⚡ Quick Web & M5Burner Flashing
 
-You can flash the firmaware in M5Burner or you can flash the pre-compiled firmware binary directly to your M5Stack Cardputer using a Web Serial flasher in Google Chrome, Microsoft Edge, or Brave:
+To prevent boot loops when coming from stock M5Stack firmware or Meshtastic, use the pre-merged **factory binary** (`0x0` offset):
 
-1. Download the latest pre-compiled **`plai-meshcore.bin`** firmware file from the [Latest GitHub Release](https://github.com/sjoyce1/Plai-Meshcore/releases/latest).
+1. Download **`plai-meshcore-factory.bin`** from the [Latest GitHub Release](https://github.com/sjoyce1/Plai-Meshcore/releases/latest).
 2. Connect your **M5Stack Cardputer** to your computer via USB-C.
-3. Open a Web Serial flasher such as **[https://meshcore.io/flasher](https://meshcore.io/flasher)** (or [Web ESPTool](https://espressif.github.io/esptool-js/)).
-4. Select your Cardputer's USB COM port, load `plai-meshcore.bin`, and click **Flash**!
+3. Open **M5Burner** or a Web Serial flasher such as **[https://meshcore.io/flasher](https://meshcore.io/flasher)** (or [Web ESPTool](https://espressif.github.io/esptool-js/)).
+4. Select your Cardputer's USB COM port, select `plai-meshcore-factory.bin` to flash at offset address **`0x0`**, and click **Flash**!
+
+*(Note: If updating an existing Plai-Meshcore installation, you can also flash `plai-meshcore.bin` at offset `0x10000`).*
 
 ---
 

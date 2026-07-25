@@ -273,5 +273,6 @@ namespace HAL
         virtual void reboot() {}
         virtual void updateMesh() {}
         virtual bool hasPendingTx() { return false; }
+        virtual void saveScreenshot() {}
     };
 } // namespace HAL

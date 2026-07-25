@@ -110,6 +110,18 @@ extern "C" void app_main(void)
         {
             // Update UI framework
             mooncake.update();
+
+#if HAL_USE_KEYBOARD
+            if (hal.keyboard() && hal.keyboard()->isPressed())
+            {
+                auto keys_state = hal.keyboard()->keysState();
+                if (keys_state.fn && hal.keyboard()->isKeyPressing(KEY_NUM_LEFTBRACE))
+                {
+                    hal.keyboard()->waitForRelease(KEY_NUM_LEFTBRACE);
+                    hal.saveScreenshot();
+                }
+            }
+#endif
         }
     }
 }

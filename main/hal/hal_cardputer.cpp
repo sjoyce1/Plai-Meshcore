@@ -680,3 +680,88 @@ void HalCardputer::reboot()
 #endif
     esp_restart();
 }
+
+#include <sys/stat.h>
+
+void HalCardputer::saveScreenshot()
+{
+#if HAL_USE_SDCARD && HAL_USE_DISPLAY
+    if (!_sdcard || !_sdcard->is_mounted())
+    {
+        ESP_LOGE(TAG, "Screenshot failed: SD card not mounted");
+        return;
+    }
+
+    mkdir("/sdcard/screenshots", 0755);
+
+    char filepath[64];
+    int snap_idx = 1;
+    for (; snap_idx < 1000; snap_idx++)
+    {
+        snprintf(filepath, sizeof(filepath), "/sdcard/screenshots/snap_%03d.bmp", snap_idx);
+        struct stat st;
+        if (stat(filepath, &st) != 0)
+            break;
+    }
+
+    FILE* f = fopen(filepath, "wb");
+    if (!f)
+    {
+        ESP_LOGE(TAG, "Failed to create screenshot file: %s", filepath);
+        return;
+    }
+
+    int w = _display->width();   // 240
+    int h = _display->height();  // 135
+    int image_size = w * h * 3;
+    int filesize = 54 + image_size;
+
+    uint8_t header[54] = {
+        'B', 'M',
+        (uint8_t)(filesize), (uint8_t)(filesize >> 8), (uint8_t)(filesize >> 16), (uint8_t)(filesize >> 24),
+        0, 0, 0, 0,
+        54, 0, 0, 0,
+        40, 0, 0, 0,
+        (uint8_t)(w), (uint8_t)(w >> 8), (uint8_t)(w >> 16), (uint8_t)(w >> 24),
+        (uint8_t)(-h), (uint8_t)((-h) >> 8), (uint8_t)((-h) >> 16), (uint8_t)((-h) >> 24),
+        1, 0,
+        24, 0,
+        0, 0, 0, 0,
+        (uint8_t)(image_size), (uint8_t)(image_size >> 8), (uint8_t)(image_size >> 16), (uint8_t)(image_size >> 24),
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0
+    };
+
+    fwrite(header, 1, 54, f);
+
+    std::vector<uint16_t> line_buf(w);
+    std::vector<uint8_t> bgr_buf(w * 3);
+
+    for (int y = 0; y < h; y++)
+    {
+        _display->readRect(0, y, w, 1, line_buf.data());
+        for (int x = 0; x < w; x++)
+        {
+            uint16_t rgb565 = line_buf[x];
+            uint16_t pixel = (rgb565 >> 8) | ((rgb565 & 0xFF) << 8);
+            uint8_t r = ((pixel >> 11) & 0x1F) << 3;
+            uint8_t g = ((pixel >> 5) & 0x3F) << 2;
+            uint8_t b = (pixel & 0x1F) << 3;
+
+            bgr_buf[x * 3 + 0] = b;
+            bgr_buf[x * 3 + 1] = g;
+            bgr_buf[x * 3 + 2] = r;
+        }
+        fwrite(bgr_buf.data(), 1, w * 3, f);
+    }
+
+    fclose(f);
+    ESP_LOGI(TAG, "Saved screenshot to %s", filepath);
+
+#if HAL_USE_SPEAKER
+    playNextSound();
+#endif
+#endif
+}

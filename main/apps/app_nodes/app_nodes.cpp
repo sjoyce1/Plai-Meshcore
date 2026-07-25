@@ -247,6 +247,60 @@ void AppNodes::onCreate()
     hl_text_init(&_data.hint_hl_ctx, _data.hal->canvas(), 20, 1500);
 }
 
+static bool s_launch_in_map_mode = false;
+
+void AppNodes::setLaunchInMapMode(bool enable)
+{
+    s_launch_in_map_mode = enable;
+}
+
+void AppNodes::openMapModeDirectly()
+{
+    _data.view_state = ViewState::NODE_MAP;
+    _data.map_zoom = MAP_DEFAULT_ZOOM;
+
+    std::string style = _data.hal->settings()->getString("system", "map_style");
+    if (style.empty())
+        style = "dark";
+    snprintf(_data.map_tile_dir, sizeof(_data.map_tile_dir), "%s/%s", MAP_BASE_DIR, style.c_str());
+    const auto& sc = _map_get_style(style.c_str());
+    _data.map_style_idx = (int)(&sc - MAP_STYLES);
+
+    double center_lat = 0.0, center_lon = 0.0;
+    bool found_center = false;
+
+#if HAL_USE_GPS
+    if (_data.hal->gps() && _data.hal->gps()->hasFix())
+    {
+        center_lat = _data.hal->gps()->getLatitude();
+        center_lon = _data.hal->gps()->getLongitude();
+        found_center = true;
+    }
+#endif
+    if (!found_center && _data.hal->nodedb())
+    {
+        const auto& index = _data.hal->nodedb()->getIndex();
+        for (const auto& entry : index)
+        {
+            if (entry.latitude_i != 0 || entry.longitude_i != 0)
+            {
+                center_lat = entry.latitude_i * 1e-7;
+                center_lon = entry.longitude_i * 1e-7;
+                found_center = true;
+                break;
+            }
+        }
+    }
+    if (!found_center)
+    {
+        center_lat = 30.556;
+        center_lon = -89.446;
+    }
+    _data.map_center_lat = center_lat;
+    _data.map_center_lon = center_lon;
+    _data.update_list = true;
+}
+
 void AppNodes::onResume()
 {
     ANIM_APP_OPEN();
@@ -255,20 +309,27 @@ void AppNodes::onResume()
     _data.hal->canvas()->setTextSize(1);
     _data.hal->canvas_update();
 
-    _data.view_state = ViewState::NODE_LIST;
-    _data.selected_index = 0;
-    _data.scroll_offset = 0;
-    _data.sort_order = s_saved_sort_order;
-    _data.list_selected_node_id = s_saved_node_id;
-    _data.update_list = true;
-    _data.last_nodedb_change = 0;
-    _data.last_msgstore_change = 0;
-    _data.dm_msg_count = 0;
-    _data.dm_cur_line = 0;
-    _data.dm_total_lines = 0;
-    _data.dm_text_width_px = 120;
-    _data.selected_node_valid = false;
-    _refresh_nodes();
+    if (s_launch_in_map_mode)
+    {
+        openMapModeDirectly();
+    }
+    else
+    {
+        _data.view_state = ViewState::NODE_LIST;
+        _data.selected_index = 0;
+        _data.scroll_offset = 0;
+        _data.sort_order = s_saved_sort_order;
+        _data.list_selected_node_id = s_saved_node_id;
+        _data.update_list = true;
+        _data.last_nodedb_change = 0;
+        _data.last_msgstore_change = 0;
+        _data.dm_msg_count = 0;
+        _data.dm_cur_line = 0;
+        _data.dm_total_lines = 0;
+        _data.dm_text_width_px = 120;
+        _data.selected_node_valid = false;
+        _refresh_nodes();
+    }
 }
 
 void AppNodes::onRunning()
@@ -4596,8 +4657,17 @@ void AppNodes::_handle_node_map_input()
         {
             _data.hal->playNextSound();
             _data.hal->keyboard()->waitForRelease(KEY_NUM_ESC);
-            _data.view_state = _data.prev_view_state;
-            _data.update_list = true;
+            if (s_launch_in_map_mode)
+            {
+                s_launch_in_map_mode = false;
+                destroyApp();
+                return;
+            }
+            else
+            {
+                _data.view_state = _data.prev_view_state;
+                _data.update_list = true;
+            }
         }
         else if (_data.hal->keyboard()->isKeyPressing(KEY_NUM_UP))
         {

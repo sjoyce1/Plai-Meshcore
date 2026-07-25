@@ -199,6 +199,8 @@ namespace MOONCAKE::APPS
         uint32_t _get_rssi_color(int16_t rssi);
 
     public:
+        static void setLaunchInMapMode(bool enable);
+        void openMapModeDirectly();
         void onCreate() override;
         void onResume() override;
         void onRunning() override;
